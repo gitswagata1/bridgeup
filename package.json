@@ -1,0 +1,17 @@
+{
+  "name": "bridgeup",
+  "version": "1.0.0",
+  "description": "A Python learning platform for first-year students: placement exam, interactive course, and real Python in the browser.",
+  "keywords": [
+    "python",
+    "education",
+    "pyodide",
+    "learning-platform",
+    "vanilla-js"
+  ],
+  "license": "MIT",
+  "scripts": {
+    "start": "python3 -m http.server 8750"
+  },
+  "private": true
+}

@@ -16,8 +16,6 @@
 
 **BridgeUp** is a Python learning platform for first-year students. It starts with a short **placement exam**, sorts each learner into one of three levels, then walks them through an interactive course where **real Python runs in the browser** — no installs, no setup. It ships with three roles out of the box: **student**, **faculty**, and **admin**.
 
-It's a single-page app built with plain HTML, CSS, and JavaScript. There is **no framework, no build step, and no server** — open the folder with any static file server and it runs.
-
 ---
 
 ## ✨ Features

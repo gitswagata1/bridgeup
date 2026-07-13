@@ -631,24 +631,6 @@ function viewHome() {
       </div>
     </section>
 
-    <section class="steps reveal-up">
-      <div class="section-head">
-        <span class="eyebrow">How it works</span>
-        <h2>Three steps. That's the whole magic.</h2>
-      </div>
-      <div class="step-grid">
-        <div class="step"><div class="step-n">1</div><h3>Take the coding proficiency test</h3><p>Ten quick questions, about two minutes. No pressure — it never goes on a record.</p></div>
-        <div class="step"><div class="step-n">2</div><h3>Get your level &amp; path</h3><p>We place you into Beginner, Intermediate, or Advanced and build the route from there.</p></div>
-        <div class="step"><div class="step-n">3</div><h3>Learn by doing</h3><p>Run real Python in the page, get instant feedback, and clear lessons one by one.</p></div>
-      </div>
-    </section>
-
-    <section class="why reveal-up">
-      <div class="why-item"><div class="why-ic">${icon("target")}</div><h3>Placed, not guessed</h3><p>A 10-question diagnostic finds your starting line so you never sit through what you already know.</p></div>
-      <div class="why-item"><div class="why-ic">${icon("bolt")}</div><h3>Real code, zero setup</h3><p>A full Python engine runs in your browser. Write it, run it, see the output — instantly.</p></div>
-      <div class="why-item"><div class="why-ic">${icon("layers")}</div><h3>One concept at a time</h3><p>Every idea builds on the last. Small lessons, clear examples, and no jargon walls.</p></div>
-    </section>
-
     <section class="testimonials reveal-up">
       <div class="section-head">
         <span class="eyebrow">Loved by learners</span>

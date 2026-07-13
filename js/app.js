@@ -631,18 +631,6 @@ function viewHome() {
       </div>
     </section>
 
-    <section class="testimonials reveal-up">
-      <div class="section-head">
-        <span class="eyebrow">Loved by learners</span>
-        <h2>From "what's a variable" to shipping code.</h2>
-      </div>
-      <div class="tgrid">
-        <figure class="tcard"><blockquote>"I went from total zero to writing my own functions in two weeks. The coding proficiency test meant I never wasted time."</blockquote><figcaption><span class="tav" style="background:#3b82f6">AK</span><div><b>Aisha K.</b><span>CSE, First Year</span></div></figcaption></figure>
-        <figure class="tcard"><blockquote>"Running real Python in the browser with instant checks is a game-changer. No installs, just code and learn."</blockquote><figcaption><span class="tav" style="background:#14b8a6">AM</span><div><b>Arjun M.</b><span>ECE, First Year</span></div></figcaption></figure>
-        <figure class="tcard"><blockquote>"Finally a course that respects my time. It skipped what I knew and pushed me exactly where I needed to grow."</blockquote><figcaption><span class="tav" style="background:#8b5cf6">RK</span><div><b>Riya K.</b><span>IT, First Year</span></div></figcaption></figure>
-      </div>
-    </section>
-
     <section class="cta-band reveal-up">
       <div class="cta-inner">
         <h2>Your Python journey starts with one exam.</h2>

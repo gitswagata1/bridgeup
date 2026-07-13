@@ -472,7 +472,6 @@ function viewAuth() {
           <div class="auth-brand"><span class="brand-mark">${BRIDGE_LOGO}</span><span>Bridge<strong>Up</strong></span></div>
           <h2 class="showcase-title">Where first-years<br/>become <span class="grad">programmers.</span></h2>
           <ul class="showcase-list">
-            <li><span class="sc-check">${icon("check")}</span> A placement test that starts you at the right level</li>
             <li><span class="sc-check">${icon("check")}</span> Real Python running in your browser — zero setup</li>
             <li><span class="sc-check">${icon("check")}</span> Instant feedback on every exercise you write</li>
           </ul>

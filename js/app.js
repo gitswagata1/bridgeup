@@ -135,6 +135,17 @@ function runnableCode(code) {
 }
 
 const ALL_SECTIONS = HANDBOOK.flatMap(c => c.sections.map(s => ({ ...s, chapter: c })));
+
+/* Topics that step beyond the basics get an "Advanced" tag in lesson lists.
+   Chapters 7-8 are Advanced at chapter level, so their lessons aren't re-tagged. */
+const ADV_SECTIONS = new Set([
+  "s14",                                    // match statements
+  "s19", "s20", "s21", "s22", "s24",        // special params, *args/**kwargs, unpacking, lambda, annotations
+  "s30", "s31", "s38",                      // list comprehensions, nested comprehensions, sequence comparison
+  "s42", "s43", "s47", "s48", "s49",        // module search path, compiled files, import *, relative imports, __path__
+  "s64", "s65", "s68", "s69"                // exception chaining, custom exceptions, exception groups, notes
+]);
+const advTag = id => ADV_SECTIONS.has(id) ? ` <span class="adv-tag">Advanced</span>` : "";
 const TOTAL_SECTIONS = ALL_SECTIONS.length;
 function sectionById(id) { return ALL_SECTIONS.find(s => s.id === id) || null; }
 function sectionDoneIn(p, id) { return !!(p.sections && p.sections[id]); }
@@ -1026,7 +1037,7 @@ function viewCourse() {
                 const codeCount = s.blocks.filter(b => b.t === "code").length;
                 return `<button class="day-row ${sd ? "day-done" : ""}" data-section="${s.id}">
                   <span class="day-num">${s.num || "•"}</span>
-                  <span class="day-main"><b>${esc(s.title)}</b><span class="muted">${codeCount ? codeCount + " runnable example" + (codeCount === 1 ? "" : "s") : "Reading lesson"}</span></span>
+                  <span class="day-main"><b>${esc(s.title)}${advTag(s.id)}</b><span class="muted">${codeCount ? codeCount + " runnable example" + (codeCount === 1 ? "" : "s") : "Reading lesson"}</span></span>
                   <span class="day-check">${sd ? icon("check") : icon("clock")}</span>
                 </button>`;
               }).join("")}
@@ -1149,7 +1160,7 @@ function viewChapter(ch) {
                 const cn = s.blocks.filter(b => b.t === "code").length;
                 return `<button class="day-row ${sd ? "day-done" : ""}" data-section="${s.id}">
                   <span class="day-num">${s.num || "•"}</span>
-                  <span class="day-main"><b>${esc(s.title)}</b><span class="muted">${cn ? cn + " code example" + (cn === 1 ? "" : "s") : "Reading lesson"}</span></span>
+                  <span class="day-main"><b>${esc(s.title)}${advTag(s.id)}</b><span class="muted">${cn ? cn + " code example" + (cn === 1 ? "" : "s") : "Reading lesson"}</span></span>
                   <span class="day-tag ${cn ? "tag-lesson" : "tag-practice"}">${cn ? "Interactive" : "Reading"}</span>
                   <span class="day-check">${sd ? icon("check") : ""}</span>
                 </button>`;
@@ -1256,6 +1267,7 @@ function viewSection(id) {
         <div class="sec-meta">
           <span>${icon("clock")} ${mins} min read</span>
           ${codeN ? `<span>${icon("bolt")} ${codeN} code example${codeN === 1 ? "" : "s"}</span>` : ""}
+          ${ADV_SECTIONS.has(s.id) ? `<span class="adv-tag">Advanced</span>` : ""}
           ${done ? `<span class="sec-done-badge">${icon("check")} Completed</span>` : ""}
         </div>
       </div>

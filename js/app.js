@@ -6,6 +6,11 @@ const app = document.getElementById("app");
 
 /* Progress is stored per logged-in account, so each VIT student
    keeps their own exam result and lesson completion. */
+function todayKey() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
 const store = {
   _key() { return "bridgeup:progress:" + (Auth.currentEmail() || "guest"); },
   get() {
@@ -14,6 +19,8 @@ const store = {
   },
   set(patch) {
     const next = { ...this.get(), ...patch };
+    // every save marks today as an active day — this is what streaks count
+    next.activity = { ...(next.activity || {}), [todayKey()]: true };
     localStorage.setItem(this._key(), JSON.stringify(next));
     return next;
   },
@@ -146,6 +153,68 @@ const ADV_SECTIONS = new Set([
   "s64", "s65", "s68", "s69"                // exception chaining, custom exceptions, exception groups, notes
 ]);
 const advTag = id => ADV_SECTIONS.has(id) ? ` <span class="adv-tag">Advanced</span>` : "";
+
+/* Optional nice-to-know topics get a "Bonus" tag — extras, style guides, legacy notes. */
+const BONUS_SECTIONS = new Set([
+  "s25",                        // Intermezzo: Coding Style
+  "s55",                        // Old string formatting
+  "s80", "s84",                 // Random Remarks, Odds and Ends
+  "s97", "s98", "s99"           // Performance measurement, Quality control, Batteries included
+]);
+const bonusTag = id => BONUS_SECTIONS.has(id) ? ` <span class="bonus-tag">Bonus</span>` : "";
+const topicTags = id => advTag(id) + bonusTag(id);
+
+/* ---------- Gamification: XP, levels, streaks ----------
+   XP is derived from progress (never stored), so it can't drift out of sync. */
+const XP_RULES = { section: 10, quiz: 25, challenge: 50, exam: 20 };
+const XP_LEVELS = [
+  { xp: 0,    name: "Newcomer"   },
+  { xp: 150,  name: "Learner"    },
+  { xp: 450,  name: "Coder"      },
+  { xp: 900,  name: "Builder"    },
+  { xp: 1400, name: "Pythonista" }
+];
+const XP_MAX = ALL_SECTIONS.length * XP_RULES.section + HANDBOOK.length * (XP_RULES.quiz + XP_RULES.challenge) + XP_RULES.exam;
+
+function xpForProgress(p) {
+  const s = studentSummary(p);
+  return s.sec * XP_RULES.section + s.quizzes * XP_RULES.quiz + s.challenges * XP_RULES.challenge +
+    (typeof p.score === "number" ? XP_RULES.exam : 0);
+}
+
+function levelForXP(xp) {
+  let idx = 0;
+  XP_LEVELS.forEach((l, i) => { if (xp >= l.xp) idx = i; });
+  const cur = XP_LEVELS[idx], next = XP_LEVELS[idx + 1] || null;
+  const pct = next ? Math.round((xp - cur.xp) / (next.xp - cur.xp) * 100) : 100;
+  return { n: idx + 1, name: cur.name, next, pct };
+}
+
+/* Streak = consecutive active days ending today (or yesterday, so it
+   doesn't read as broken before you've studied today). */
+function streakInfo(p) {
+  const days = Object.keys(p.activity || {}).sort();
+  if (!days.length) return { current: 0, best: 0 };
+  const has = d => !!(p.activity || {})[d];
+  const key = (dt) => dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, "0") + "-" + String(dt.getDate()).padStart(2, "0");
+  let best = 1, run = 1;
+  for (let i = 1; i < days.length; i++) {
+    const prev = new Date(days[i - 1]), cur = new Date(days[i]);
+    run = (cur - prev === 86400000) ? run + 1 : 1;
+    if (run > best) best = run;
+  }
+  const anchor = new Date();
+  if (!has(key(anchor))) anchor.setDate(anchor.getDate() - 1);   // grace: count up to yesterday
+  let current = 0;
+  while (has(key(anchor))) { current++; anchor.setDate(anchor.getDate() - 1); }
+  return { current, best: Math.max(best, current) };
+}
+
+/* Certificate unlocks when the whole course is genuinely done. */
+function certificateEligible(p) {
+  const s = studentSummary(p);
+  return s.sec === TOTAL_SECTIONS && s.quizzes === HANDBOOK.length && s.challenges === HANDBOOK.length;
+}
 const TOTAL_SECTIONS = ALL_SECTIONS.length;
 function sectionById(id) { return ALL_SECTIONS.find(s => s.id === id) || null; }
 function sectionDoneIn(p, id) { return !!(p.sections && p.sections[id]); }
@@ -1009,6 +1078,31 @@ function viewCourse() {
         </div>
       </div>
 
+      ${(() => {
+        const xp = xpForProgress(p);
+        const lvl = levelForXP(xp);
+        const streak = streakInfo(p);
+        return `
+      <div class="game-strip">
+        <div class="game-cell">
+          <span class="game-ic gi-xp">${icon("bolt")}</span>
+          <div><b>${xp} XP</b><span>of ${XP_MAX} · +10 per lesson, +25 quiz, +50 challenge</span></div>
+        </div>
+        <div class="game-cell">
+          <span class="game-ic gi-lvl">${icon("rocket")}</span>
+          <div>
+            <b>Level ${lvl.n} · ${lvl.name}</b>
+            <span class="lvl-track"><i style="width:${lvl.pct}%"></i></span>
+            <span>${lvl.next ? `${lvl.next.xp - xp} XP to ${lvl.next.name}` : "Top level reached"}</span>
+          </div>
+        </div>
+        <div class="game-cell">
+          <span class="game-ic gi-streak">${icon("flame")}</span>
+          <div><b>${streak.current}-day streak</b><span>${streak.best > streak.current ? `best: ${streak.best} days` : streak.current ? "keep it alive — learn a little daily" : "complete a lesson today to start one"}</span></div>
+        </div>
+      </div>`;
+      })()}
+
       <div class="chapters-grid">
         ${HANDBOOK.map(c => {
           const meta = CH_META[c.ch] || { color: "#3b82f6", icon: "layers", level: "Core", outcome: "" };
@@ -1037,7 +1131,7 @@ function viewCourse() {
                 const codeCount = s.blocks.filter(b => b.t === "code").length;
                 return `<button class="day-row ${sd ? "day-done" : ""}" data-section="${s.id}">
                   <span class="day-num">${s.num || "•"}</span>
-                  <span class="day-main"><b>${esc(s.title)}${advTag(s.id)}</b><span class="muted">${codeCount ? codeCount + " runnable example" + (codeCount === 1 ? "" : "s") : "Reading lesson"}</span></span>
+                  <span class="day-main"><b>${esc(s.title)}${topicTags(s.id)}</b><span class="muted">${codeCount ? codeCount + " runnable example" + (codeCount === 1 ? "" : "s") : "Reading lesson"}</span></span>
                   <span class="day-check">${sd ? icon("check") : icon("clock")}</span>
                 </button>`;
               }).join("")}
@@ -1045,6 +1139,23 @@ function viewCourse() {
           </div>`;
         }).join("")}
       </div>
+
+      ${(() => {
+        const s = studentSummary(p);
+        const ok = certificateEligible(p);
+        const frac = (a, b) => `<span class="cert-frac ${a === b ? "cf-done" : ""}">${a}/${b}</span>`;
+        return `
+      <div class="cert-card ${ok ? "cert-ready" : ""}">
+        <div class="cert-ic">${icon("cap")}</div>
+        <div class="cert-body">
+          <h3>Certificate of Completion</h3>
+          ${ok
+            ? `<p>You've completed every lesson, quiz and challenge. Download your certificate — it carries your name and completion date.</p>`
+            : `<p>Finish the whole course to earn it: ${frac(s.sec, TOTAL_SECTIONS)} lessons · ${frac(s.quizzes, HANDBOOK.length)} quizzes · ${frac(s.challenges, HANDBOOK.length)} challenges.</p>`}
+        </div>
+        <button class="btn ${ok ? "btn-finish" : "btn-ghost"} cert-btn" data-cert ${ok ? "" : "disabled"}>${ok ? `${icon("download")} Download certificate` : `${icon("lock")} Locked`}</button>
+      </div>`;
+      })()}
     </section>`;
 }
 
@@ -1160,7 +1271,7 @@ function viewChapter(ch) {
                 const cn = s.blocks.filter(b => b.t === "code").length;
                 return `<button class="day-row ${sd ? "day-done" : ""}" data-section="${s.id}">
                   <span class="day-num">${s.num || "•"}</span>
-                  <span class="day-main"><b>${esc(s.title)}${advTag(s.id)}</b><span class="muted">${cn ? cn + " code example" + (cn === 1 ? "" : "s") : "Reading lesson"}</span></span>
+                  <span class="day-main"><b>${esc(s.title)}${topicTags(s.id)}</b><span class="muted">${cn ? cn + " code example" + (cn === 1 ? "" : "s") : "Reading lesson"}</span></span>
                   <span class="day-tag ${cn ? "tag-lesson" : "tag-practice"}">${cn ? "Interactive" : "Reading"}</span>
                   <span class="day-check">${sd ? icon("check") : ""}</span>
                 </button>`;
@@ -1268,6 +1379,7 @@ function viewSection(id) {
           <span>${icon("clock")} ${mins} min read</span>
           ${codeN ? `<span>${icon("bolt")} ${codeN} code example${codeN === 1 ? "" : "s"}</span>` : ""}
           ${ADV_SECTIONS.has(s.id) ? `<span class="adv-tag">Advanced</span>` : ""}
+          ${BONUS_SECTIONS.has(s.id) ? `<span class="bonus-tag">Bonus</span>` : ""}
           ${done ? `<span class="sec-done-badge">${icon("check")} Completed</span>` : ""}
         </div>
       </div>
@@ -1583,6 +1695,19 @@ document.addEventListener("click", (e) => {
     generateChapterPDF(chapter, { ...CH_META[chapter.ch], docs: CH_DOCS[chapter.ch] })
       .catch(err => alert(String(err && err.message || err)))
       .finally(() => { pdfBtn.disabled = false; pdfBtn.innerHTML = original; });
+    return;
+  }
+
+  // download the completion certificate (only rendered enabled when earned)
+  const certBtn = e.target.closest("[data-cert]");
+  if (certBtn) {
+    if (!certificateEligible(store.get())) return;
+    const original = certBtn.innerHTML;
+    certBtn.disabled = true;
+    certBtn.textContent = "Preparing…";
+    generateCertificatePDF(Auth.currentUser(), xpForProgress(store.get()))
+      .catch(err => alert(String(err && err.message || err)))
+      .finally(() => { certBtn.disabled = false; certBtn.innerHTML = original; });
     return;
   }
 

@@ -193,7 +193,7 @@ const ICONS = {
 
 /* Each chapter mapped to the authoritative section of the official Python Tutorial. */
 const CH_DOCS = {
-  1: { url: "https://docs.python.org/3/tutorial/introduction.html", title: "3. An Informal Introduction to Python" },
+  1: { url: "https://docs.python.org/3/tutorial/introduction.html", title: "3. Introduction to Python" },
   2: { url: "https://docs.python.org/3/tutorial/controlflow.html", title: "4. More Control Flow Tools" },
   3: { url: "https://docs.python.org/3/tutorial/datastructures.html", title: "5. Data Structures" },
   4: { url: "https://docs.python.org/3/tutorial/modules.html", title: "6. Modules" },

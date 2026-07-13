@@ -595,7 +595,7 @@ function viewHome() {
         <span class="hero-badge"><span class="badge-star">★</span> #1 Python course, built for first-year students</span>
         <h1>Go from zero to<br/><span class="grad">real Python</span>, faster.</h1>
         <p class="lead">
-          BridgeUp meets you exactly where you are. Take a two-minute placement test, get a
+          BridgeUp meets you exactly where you are. Take a two-minute coding proficiency test, get a
           path built for your level, and write <b>real Python in your browser</b> from lesson one.
         </p>
         <div class="hero-actions">
@@ -644,7 +644,7 @@ function viewHome() {
         <h2>Three steps. That's the whole magic.</h2>
       </div>
       <div class="step-grid">
-        <div class="step"><div class="step-n">1</div><h3>Take the placement exam</h3><p>Ten quick questions, about two minutes. No pressure — it never goes on a record.</p></div>
+        <div class="step"><div class="step-n">1</div><h3>Take the coding proficiency test</h3><p>Ten quick questions, about two minutes. No pressure — it never goes on a record.</p></div>
         <div class="step"><div class="step-n">2</div><h3>Get your level &amp; path</h3><p>We place you into Beginner, Intermediate, or Advanced and build the route from there.</p></div>
         <div class="step"><div class="step-n">3</div><h3>Learn by doing</h3><p>Run real Python in the page, get instant feedback, and clear lessons one by one.</p></div>
       </div>
@@ -662,7 +662,7 @@ function viewHome() {
         <h2>From "what's a variable" to shipping code.</h2>
       </div>
       <div class="tgrid">
-        <figure class="tcard"><blockquote>"I went from total zero to writing my own functions in two weeks. The placement test meant I never wasted time."</blockquote><figcaption><span class="tav" style="background:#3b82f6">AK</span><div><b>Aisha K.</b><span>CSE, First Year</span></div></figcaption></figure>
+        <figure class="tcard"><blockquote>"I went from total zero to writing my own functions in two weeks. The coding proficiency test meant I never wasted time."</blockquote><figcaption><span class="tav" style="background:#3b82f6">AK</span><div><b>Aisha K.</b><span>CSE, First Year</span></div></figcaption></figure>
         <figure class="tcard"><blockquote>"Running real Python in the browser with instant checks is a game-changer. No installs, just code and learn."</blockquote><figcaption><span class="tav" style="background:#14b8a6">AM</span><div><b>Arjun M.</b><span>ECE, First Year</span></div></figcaption></figure>
         <figure class="tcard"><blockquote>"Finally a course that respects my time. It skipped what I knew and pushed me exactly where I needed to grow."</blockquote><figcaption><span class="tav" style="background:#8b5cf6">RK</span><div><b>Riya K.</b><span>IT, First Year</span></div></figcaption></figure>
       </div>
@@ -672,7 +672,7 @@ function viewHome() {
       <div class="cta-inner">
         <h2>Your Python journey starts with one exam.</h2>
         <p>Two minutes to find your level. A lifetime skill to gain.</p>
-        <button class="btn btn-xl" data-nav="exam">${hasResult ? "Jump back in →" : "Take the placement exam →"}</button>
+        <button class="btn btn-xl" data-nav="exam">${hasResult ? "Jump back in →" : "Take the coding proficiency test →"}</button>
       </div>
     </section>
   `;
@@ -1023,7 +1023,7 @@ function viewCourse() {
           <p class="lead">Eight chapters, ${TOTAL_SECTIONS} lessons — the complete official Python tutorial from docs.python.org, rebuilt as an interactive course with quizzes and graded challenges. Every example runs live in your browser.</p>
           <div class="ch-actions">
             <button class="btn btn-xl" data-section="${nextId}">${done ? "Continue learning →" : "Start Chapter 1 →"}</button>
-            ${done ? "" : `<button class="btn btn-ghost btn-xl" data-nav="exam">Take the placement test</button>`}
+            ${done ? "" : `<button class="btn btn-ghost btn-xl" data-nav="exam">Take the coding proficiency test</button>`}
           </div>
           ${place ? `<p class="muted cp-rec">Placed into <b style="color:${place.color}">${place.name}</b> — Chapter ${REC_CHAPTER[place.key]} is a great place to focus first.</p>` : ""}
           <a class="hero-docs" href="${DOCS_INDEX}" target="_blank" rel="noopener">${icon("book")} Learn alongside the official Python Tutorial ${icon("external")}</a>

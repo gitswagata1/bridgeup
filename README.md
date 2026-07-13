@@ -51,7 +51,7 @@ The login screen shows the relevant demo credentials for whichever role you sele
 
 ## 🚀 Quick start
 
-BridgeUp it must be **served over HTTP** (not opened as a `file://` URL) — the in-browser Python runtime and the Web Crypto password hashing both require a secure context, which `localhost` provides.
+BridgeUp must be **served over HTTP** (not opened as a `file://` URL) — the in-browser Python runtime and the Web Crypto password hashing both require a secure context, which `localhost` provides.
 
 ```bash
 # clone

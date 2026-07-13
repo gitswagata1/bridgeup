@@ -28,6 +28,7 @@
   - **Student** — takes the course and tracks their own progress.
   - **Faculty** — a read-only class dashboard: cohort analytics, per-chapter engagement, and a per-student drill-down.
   - **Admin** — a full console: every account, live progress, role management, database export, and resets.
+- **Gamification.** XP for every lesson, quiz and challenge; five levels from Newcomer to Pythonista; daily learning streaks; and a downloadable **certificate of completion** with a verification code.
 - **Progress that persists.** All state lives in the browser's `localStorage`, isolated per account.
 - **Polished UX.** Cross-fade view transitions, keyboard-accessible focus states, a responsive dark theme, and tactile micro-interactions.
 

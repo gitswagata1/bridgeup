@@ -105,3 +105,64 @@ async function generateChapterPDF(chapter, meta) {
   const slug = chapter.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   doc.save("BridgeUp-Handbook-Chapter-" + chapter.ch + "-" + slug + ".pdf");
 }
+
+/* Completion certificate — A4 landscape, issued with the student's
+   name, date, XP earned and a deterministic verification code. */
+async function generateCertificatePDF(user, xp) {
+  const jsPDF = await PDF.ensure();
+  const doc = new jsPDF({ unit: "pt", format: "a4", orientation: "landscape" });
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const blue = [59, 130, 246], teal = [20, 184, 166], ink = [18, 28, 48], muted = [110, 125, 152];
+  const cx = W / 2;
+
+  /* ground + double border */
+  doc.setFillColor(250, 251, 253); doc.rect(0, 0, W, H, "F");
+  doc.setDrawColor(...blue); doc.setLineWidth(3); doc.roundedRect(26, 26, W - 52, H - 52, 10, 10);
+  doc.setDrawColor(...teal); doc.setLineWidth(1); doc.roundedRect(36, 36, W - 72, H - 72, 8, 8);
+
+  /* brand */
+  doc.setFont("helvetica", "bold"); doc.setFontSize(13); doc.setTextColor(...blue);
+  doc.text("BRIDGE", cx - 4, 74, { align: "right" });
+  doc.setTextColor(...teal); doc.text("UP", cx - 4, 74);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(...muted);
+  doc.text("LEARN PYTHON, THE RIGHT WAY  ·  VIT VELLORE", cx, 90, { align: "center" });
+
+  /* title */
+  doc.setFont("times", "bold"); doc.setFontSize(34); doc.setTextColor(...ink);
+  doc.text("Certificate of Completion", cx, 150, { align: "center" });
+  doc.setDrawColor(...teal); doc.setLineWidth(1.5); doc.line(cx - 90, 164, cx + 90, 164);
+
+  /* recipient */
+  doc.setFont("helvetica", "normal"); doc.setFontSize(12.5); doc.setTextColor(...muted);
+  doc.text("This certifies that", cx, 205, { align: "center" });
+  doc.setFont("times", "bolditalic"); doc.setFontSize(30); doc.setTextColor(...blue);
+  doc.text(user.name, cx, 245, { align: "center" });
+  doc.setDrawColor(210, 218, 232); doc.setLineWidth(.8); doc.line(cx - 180, 258, cx + 180, 258);
+
+  /* body */
+  doc.setFont("helvetica", "normal"); doc.setFontSize(12.5); doc.setTextColor(...ink);
+  doc.text("has successfully completed the full BridgeUp Python course", cx, 288, { align: "center" });
+  doc.setFontSize(11); doc.setTextColor(...muted);
+  doc.text("The Python Handbook — 8 chapters, 99 lessons, all quizzes passed and every coding challenge solved", cx, 308, { align: "center" });
+  doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(...teal);
+  doc.text(xp + " XP earned", cx, 330, { align: "center" });
+
+  /* footer: date · signature · verification */
+  const date = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+  let code = 0;
+  for (const ch of user.email + "|" + date) code = (code * 31 + ch.charCodeAt(0)) >>> 0;
+  const y = H - 108;
+  doc.setDrawColor(190, 200, 216); doc.setLineWidth(.8);
+  doc.line(96, y, 268, y); doc.line(W - 268, y, W - 96, y);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(...ink);
+  doc.text(date, 182, y - 8, { align: "center" });
+  doc.text("the.swagata", W - 182, y - 8, { align: "center" });
+  doc.setFontSize(8.5); doc.setTextColor(...muted);
+  doc.text("DATE OF COMPLETION", 182, y + 14, { align: "center" });
+  doc.text("BRIDGEUP  ·  VIT VELLORE", W - 182, y + 14, { align: "center" });
+  doc.text("Verification: BU-" + code.toString(36).toUpperCase(), cx, H - 52, { align: "center" });
+
+  const slug = user.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  doc.save("BridgeUp-Certificate-" + slug + ".pdf");
+}

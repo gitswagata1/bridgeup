@@ -7,36 +7,53 @@
   <img src="https://img.shields.io/badge/JavaScript-vanilla-f7df1e?logo=javascript&logoColor=black" alt="Vanilla JS">
   <img src="https://img.shields.io/badge/Python-Pyodide-3776ab?logo=python&logoColor=white" alt="Python via Pyodide">
   <img src="https://img.shields.io/badge/dependencies-0-brightgreen" alt="Zero dependencies">
-  <img src="https://img.shields.io/badge/License-MIT-blue" alt="MIT License">
+  <a href="https://gitswagata1.github.io/bridgeup/"><img src="https://img.shields.io/badge/demo-live-14b8a6" alt="Live demo"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue" alt="MIT License"></a>
 </p>
 
-<p align="center">
-  <b>🔗 <a href="https://gitswagata1.github.io/bridgeup/">Live demo — gitswagata1.github.io/bridgeup</a></b>
-</p>
+<h3 align="center">🔗 <a href="https://gitswagata1.github.io/bridgeup/">Live demo — gitswagata1.github.io/bridgeup</a></h3>
 
-**BridgeUp** is a Python learning platform for first-year students. It starts with a short **placement exam**, sorts each learner into one of three levels, then walks them through an interactive course where **real Python runs in the browser** — no installs, no setup. It ships with three roles out of the box: **student**, **faculty**, and **admin**.
+**BridgeUp** is a Python learning platform for first-year students, built around one observation: every classroom has a hundred different starting lines. It begins with a short **coding proficiency test**, places each learner into **Beginner, Intermediate, or Advanced**, and then teaches through an interactive course where **real Python runs in the browser** — no installs, no setup, no lab configuration.
+
+It's a single-page app in plain HTML, CSS, and JavaScript — **no framework, no build step, no server**. Serve the folder statically and it runs.
+
+---
+
+## Contents
+
+- [Features](#-features)
+- [Demo accounts](#-demo-accounts)
+- [Quick start](#-quick-start)
+- [The course](#-the-course)
+- [Gamification](#-gamification)
+- [How it works](#-how-it-works)
+- [Project structure](#-project-structure)
+- [Deployment](#-deployment)
+- [Security note](#-security-note)
+- [Roadmap](#-roadmap)
+- [Credits](#-credits)
 
 ---
 
 ## ✨ Features
 
-- **Placement exam → personalised track.** A 10-question diagnostic scores the learner and places them into **Beginner**, **Intermediate**, or **Advanced**, CS50-style, with a per-topic breakdown.
-- **A real course.** *The Python Handbook* — **8 chapters, 99 sections** adapted from the [official Python Tutorial](https://docs.python.org/3/tutorial/). Every chapter has learning objectives, an auto-tracked checklist, a multiple-choice quiz, and a **graded coding challenge**.
-- **Python that actually runs.** An in-page scratchpad executes real CPython via [Pyodide](https://pyodide.org) (WebAssembly). Standard input is supported and an infinite-loop guard keeps the tab responsive.
-- **Downloadable study guides.** Each chapter exports a formatted **PDF** (overview, objectives, takeaways, practice, and full lesson content) via [jsPDF](https://github.com/parallax/jsPDF).
+- **Proficiency test → personalised track.** A 10-question diagnostic (~2 minutes) scores the learner, places them into one of three levels, and shows a per-topic breakdown of strengths and gaps.
+- **A real course, not a slideshow.** *The Python Handbook* — **8 chapters, 99 lessons** adapted from the [official Python Tutorial](https://docs.python.org/3/tutorial/), with source attribution throughout. Topics that step beyond the basics carry an **Advanced** tag; optional extras carry a **Bonus** tag.
+- **Python that actually runs.** An in-page scratchpad executes real CPython via [Pyodide](https://pyodide.org) (WebAssembly): 165 runnable examples, `input()` support, REPL-style expression echo, and an infinite-loop watchdog so the tab never freezes.
+- **Completion that means something.** A chapter closes only when its lessons are read, its quiz is passed at ≥70%, and its **graded coding challenge** produces the right output.
+- **Gamification built in.** XP for every action, five levels from *Newcomer* to *Pythonista*, daily learning **streaks**, and a downloadable **certificate of completion** with a verification code — see [Gamification](#-gamification).
 - **Three roles, one login.**
-  - **Student** — takes the course and tracks their own progress.
-  - **Faculty** — a read-only class dashboard: cohort analytics, per-chapter engagement, and a per-student drill-down.
-  - **Admin** — a full console: every account, live progress, role management, database export, and resets.
-- **Gamification.** XP for every lesson, quiz and challenge; five levels from Newcomer to Pythonista; daily learning streaks; and a downloadable **certificate of completion** with a verification code.
-- **Progress that persists.** All state lives in the browser's `localStorage`, isolated per account.
-- **Polished UX.** Cross-fade view transitions, keyboard-accessible focus states, a responsive dark theme, and tactile micro-interactions.
+  - **Student** — takes the course, tracks progress, downloads chapter PDFs.
+  - **Faculty** — a read-only class dashboard: cohort analytics, per-chapter engagement, per-student drill-down.
+  - **Admin** — a full console: every account, live progress, role management, database export, resets.
+- **Offline study guides.** Every chapter exports a formatted **PDF** (objectives, takeaways, practice, full lesson content) via [jsPDF](https://github.com/parallax/jsPDF).
+- **Polished UX.** Cross-fade view transitions, keyboard-accessible focus states, custom scrollbars, a responsive dark theme, and zero horizontal overflow down to phone widths.
 
 ---
 
 ## 🔑 Demo accounts
 
-The app seeds a demo cohort on first load, so every dashboard is populated immediately.
+A demo cohort is seeded in code on first load, so every dashboard is populated the moment you open the site. The login screen also shows the right credentials for whichever role you select.
 
 | Role        | Email                          | Password     |
 | ----------- | ------------------------------ | ------------ |
@@ -44,8 +61,9 @@ The app seeds a demo cohort on first load, so every dashboard is populated immed
 | **Faculty** | `rao@vit.ac.in`                | `teach123`   |
 | **Student** | `swagata@vitstudent.ac.in`     | `python123`  |
 
-Additional demo students (all `python123`): `aisha@`, `ben@`, `cara@` `vitstudent.ac.in`.
-The login screen shows the relevant demo credentials for whichever role you select.
+More demo students, with varied progress for realistic dashboards (all `python123`): `aisha@`, `ben@`, `cara@` — `vitstudent.ac.in`.
+
+Registration is domain-gated: students sign up with `@vitstudent.ac.in`, faculty with `@vit.ac.in`.
 
 ---
 
@@ -66,7 +84,64 @@ npx serve .                     # if you prefer Node
 
 Then open **http://localhost:8750**.
 
-> First time you run code, Pyodide downloads the Python runtime (~7 s). It's cached afterwards.
+> The first time you run code, Pyodide downloads the Python runtime (~7 s). It's cached afterwards.
+
+---
+
+## 📚 The course
+
+Faithful to the official Python Tutorial, restructured into an interactive path. Each chapter ends with a quiz and a graded coding challenge.
+
+| # | Chapter | Level | Lessons | Time |
+|---|---------|-------|---------|------|
+| 1 | Introduction to Python | Beginner | 6 | ~45 min |
+| 2 | More Control Flow Tools | Beginner | 19 | ~1 hr |
+| 3 | Data Structures | Core | 13 | ~1.5 hrs |
+| 4 | Modules | Core | 11 | ~45 min |
+| 5 | Input and Output | Core | 9 | ~1 hr |
+| 6 | Errors and Exceptions | Core | 11 | ~45 min |
+| 7 | Classes | Advanced | 18 | ~1.5 hrs |
+| 8 | A Tour of the Standard Library | Advanced | 12 | ~1 hr |
+
+**99 lessons · 269 code examples (165 runnable in-page) · 8 quizzes · 8 graded challenges.**
+Topics that stretch beyond a chapter's baseline (e.g. `match` statements, `*args/**kwargs`, comprehensions, exception groups) are tagged **Advanced**; nice-to-know extras (coding style, legacy formatting, performance measurement) are tagged **Bonus**.
+
+---
+
+## ⚡ Gamification
+
+Everything is derived from real progress — XP is computed, never stored, so it can't drift or be edited.
+
+| Action | XP |
+|--------|----|
+| Complete a lesson | +10 |
+| Pass a chapter quiz (≥70%) | +25 |
+| Solve a coding challenge | +50 |
+| Finish the proficiency test | +20 |
+
+- **Levels** — 1,610 XP total across five levels: *Newcomer* → *Learner* (150) → *Coder* (450) → *Builder* (900) → *Pythonista* (1,400).
+- **Streaks** — any learning activity marks the day; consecutive days build a streak (with best-streak memory and a one-day grace period).
+- **Certificate of completion** — unlocks only when every lesson, quiz, and challenge is done. Downloads as an A4 PDF with the student's name, completion date, XP earned, and a deterministic verification code.
+
+---
+
+## 🏗 How it works
+
+**Routing.** A tiny hash-free router in `app.js` swaps the contents of `#app` per view (`home`, `exam`, `result`, `course`, `chapter`, `section`, `faculty`, `admin`, plus the auth screen). Navigation cross-fades via the [View Transitions API](https://developer.mozilla.org/docs/Web/API/View_Transition_API) where available; in-place updates repaint instantly and preserve scroll.
+
+**The "database".** There is no backend. `localStorage` holds:
+
+| Key                         | Purpose                                                        |
+| --------------------------- | -------------------------------------------------------------- |
+| `bridgeup_accounts`         | All accounts (name, role, salted SHA-256 password hash)        |
+| `bridgeup_session`          | The currently signed-in email                                  |
+| `bridgeup:progress:<email>` | Per-account progress: score, lessons, quizzes, challenges, and daily activity for streaks |
+
+Passwords are hashed with the Web Crypto API before storage — never kept in plaintext.
+
+**In-browser Python.** `runner.js` lazy-loads Pyodide on first run, then reuses it. Each run executes in a fresh namespace, captures `stdout`/`stderr`, feeds student-supplied input, echoes a trailing bare expression like the REPL, and a step-count watchdog aborts runaway loops.
+
+**Placement & progress.** The test maps a score to a level in `data.js`; the course lives in `handbook.js`. Chapter completion (lessons + quiz + challenge) rolls up automatically into the student's own view, the faculty dashboard, and the admin console.
 
 ---
 
@@ -79,11 +154,11 @@ bridgeup/
 │   └── styles.css      # Design system, views, responsive rules, motion
 ├── js/
 │   ├── auth.js         # Client-side accounts, roles, SHA-256 hashing (localStorage)
-│   ├── data.js         # Placement exam, three levels, curriculum map, scoring
-│   ├── handbook.js     # Course content: 8 chapters / 99 sections (official Python Tutorial)
+│   ├── data.js         # Proficiency test, three levels, scoring
+│   ├── handbook.js     # Course content: 8 chapters / 99 lessons (official Python Tutorial)
 │   ├── runner.js       # In-browser Python via Pyodide (stdin, loop guard, REPL echo)
-│   ├── pdf.js          # Per-chapter PDF study guides via jsPDF
-│   └── app.js          # Views, routing, progress, quizzes, challenges, dashboards, seed
+│   ├── pdf.js          # Chapter study guides + completion certificate (jsPDF)
+│   └── app.js          # Views, routing, progress, quizzes, challenges, gamification, dashboards, demo seed
 ├── docs/
 │   └── banner.svg
 ├── package.json
@@ -93,38 +168,27 @@ bridgeup/
 
 ---
 
-## 🏗 How it works
-
-**Routing.** A tiny hash-free router in `app.js` swaps the contents of `#app` for the active view (`home`, `exam`, `result`, `course`, `chapter`, `section`, `faculty`, `admin`, and the auth screen). Navigation between views uses the [View Transitions API](https://developer.mozilla.org/docs/Web/API/View_Transition_API) where available, and falls back to an instant repaint otherwise.
-
-**The "database".** There is no backend. `localStorage` holds three things:
-
-| Key                         | Purpose                                          |
-| --------------------------- | ------------------------------------------------ |
-| `bridgeup_accounts`         | All accounts (name, role, salted SHA-256 hash)   |
-| `bridgeup_session`          | The currently signed-in email                    |
-| `bridgeup:progress:<email>` | Per-account progress (score, sections, quizzes…) |
-
-Passwords are hashed with the Web Crypto API before storage — never kept in plaintext. Registration is domain-gated: `@vitstudent.ac.in` for students, `@vit.ac.in` for faculty.
-
-**In-browser Python.** `runner.js` lazy-loads Pyodide on first run, then reuses it. Each run executes in a fresh namespace, captures `stdout`/`stderr`, feeds any student-supplied input, echoes the last expression like a REPL, and aborts runaway loops with a step-count watchdog.
-
-**Placement & progress.** The exam maps a score to a level in `data.js`; the course is defined in `handbook.js`. A chapter is "complete" when its sections are read, its quiz is passed (≥70%), and its coding challenge is solved — all tracked automatically and surfaced in the faculty and admin dashboards.
-
----
-
 ## 🌐 Deployment
 
-Because there's no build step, deployment is just "host the files".
+No build step — deployment is "host the files".
 
-- **GitHub Pages** — push to `main`, then enable Pages (Settings → Pages → *Deploy from branch* → `main` / root).
-- **Netlify / Vercel** — import the repo with **no build command** and the project root as the publish directory.
+- **GitHub Pages** (this demo) — push to `main`, then Settings → Pages → *Deploy from branch* → `main` / root.
+- **Netlify / Vercel** — import the repo with **no build command**, publish directory = project root.
+- **University intranet** — copy the folder to any static web server.
 
 ---
 
 ## 🔒 Security note
 
-Authentication here is **demo-grade** and entirely client-side: accounts, sessions, and progress live in the visitor's browser. Passwords are hashed, but anyone with local access can inspect `localStorage`. This is ideal for a classroom demo or portfolio piece — for real deployments, move authentication and data to a proper backend.
+Authentication is **demo-grade by design** and entirely client-side: accounts, sessions, and progress live in each visitor's own browser. Passwords are hashed, but anyone with local access can inspect `localStorage`. Ideal for a classroom pilot or portfolio piece — for production, swap in a real backend (see roadmap).
+
+---
+
+## 🗺 Roadmap
+
+- **Scale** — university backend: SSO sign-in, a real cohort database, section management, exportable analytics.
+- **Beyond Python** — C and Java tracks to match first-year curricula.
+- **Assessment** — proctored test modes and LMS integration so progress flows into existing systems.
 
 ---
 
@@ -135,7 +199,7 @@ Authentication here is **demo-grade** and entirely client-side: accounts, sessio
 - **[jsPDF](https://github.com/parallax/jsPDF)** — client-side PDF generation.
 - Type: **Inter** and **Space Grotesk** via Google Fonts.
 
-Built for first-year students at **VIT Vellore**.
+Built for first-year students at **VIT Vellore** by **Swagata Banerjee** (`the.swagata`).
 
 ---
 

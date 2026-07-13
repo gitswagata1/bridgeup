@@ -906,6 +906,9 @@ body.faculty-mode .nav-cta { display: none; }   /* faculty don't take the placem
 .hero-docs:hover { color: var(--ink); border-color: var(--blue); background: rgba(59,130,246,.08); }
 .hero-docs svg { width: 15px; height: 15px; }
 .hero-docs svg:last-child { width: 13px; height: 13px; opacity: .7; }
+.hero-source { margin-top: 10px; font-size: 12px; color: var(--muted); }
+.hero-source a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+.hero-source a:hover { color: var(--ink-soft); }
 
 a.docs-card { display: block; text-decoration: none; color: inherit; transition: .15s; }
 a.docs-card:hover { border-color: var(--blue); }

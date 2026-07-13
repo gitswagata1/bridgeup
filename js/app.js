@@ -1027,6 +1027,7 @@ function viewCourse() {
           </div>
           ${place ? `<p class="muted cp-rec">Placed into <b style="color:${place.color}">${place.name}</b> — Chapter ${REC_CHAPTER[place.key]} is a great place to focus first.</p>` : ""}
           <a class="hero-docs" href="${DOCS_INDEX}" target="_blank" rel="noopener">${icon("book")} Learn alongside the official Python Tutorial ${icon("external")}</a>
+          <p class="hero-source">Source: <a href="${DOCS_INDEX}" target="_blank" rel="noopener">docs.python.org</a></p>
         </div>
         <div class="ch-ring" style="--accent:${pct >= 100 ? "#14b8a6" : "#3b82f6"}">
           ${ring(pct, 168, 12)}

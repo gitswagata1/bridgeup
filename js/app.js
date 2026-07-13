@@ -555,10 +555,6 @@ function viewAuth() {
             <li><span class="sc-check">${icon("check")}</span> Real Python running in your browser — zero setup</li>
             <li><span class="sc-check">${icon("check")}</span> Instant feedback on every exercise you write</li>
           </ul>
-          <figure class="showcase-quote">
-            <blockquote>"Zero to writing my own functions in two weeks. Nothing else came close."</blockquote>
-            <figcaption><span class="tav" style="background:#14b8a6">AK</span> Aisha K. · CSE, First Year</figcaption>
-          </figure>
         </div>
       </aside>
       <div class="auth-panel">
@@ -681,13 +677,6 @@ function viewHome() {
         <div class="hero-actions">
           <button class="btn btn-xl" data-nav="exam">${hasResult ? "Continue learning →" : "Start free — take the exam"}</button>
           <button class="btn btn-ghost btn-xl" data-nav="curriculum">Explore curriculum</button>
-        </div>
-        <div class="trust-line">
-          <div class="avatars"><span style="background:#3b82f6">SB</span><span style="background:#14b8a6">AM</span><span style="background:#8b5cf6">RK</span><span style="background:#f59e0b">+</span></div>
-          <div>
-            <div class="stars">★★★★★ <b>4.9</b></div>
-            <span class="muted">Loved by 12,000+ VIT learners</span>
-          </div>
         </div>
         ${hasResult ? `
           <div class="resume-card" data-nav="result">
@@ -1069,7 +1058,6 @@ function viewCourse() {
             ${done ? "" : `<button class="btn btn-ghost btn-xl" data-nav="exam">Take the coding proficiency test</button>`}
           </div>
           ${place ? `<p class="muted cp-rec">Placed into <b style="color:${place.color}">${place.name}</b> — Chapter ${REC_CHAPTER[place.key]} is a great place to focus first.</p>` : ""}
-          <a class="hero-docs" href="${DOCS_INDEX}" target="_blank" rel="noopener">${icon("book")} Learn alongside the official Python Tutorial ${icon("external")}</a>
           <p class="hero-source">Source: <a href="${DOCS_INDEX}" target="_blank" rel="noopener">docs.python.org</a></p>
         </div>
         <div class="ch-ring" style="--accent:${pct >= 100 ? "#14b8a6" : "#3b82f6"}">

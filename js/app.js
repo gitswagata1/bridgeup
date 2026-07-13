@@ -631,13 +631,6 @@ function viewHome() {
       </div>
     </section>
 
-    <section class="stats-bar reveal-up">
-      <div class="stat-cell"><b data-count-to="12" data-suffix="K+">0</b><span>learners onboarded</span></div>
-      <div class="stat-cell"><b data-count-to="1.2" data-suffix="M">0</b><span>lines of Python written</span></div>
-      <div class="stat-cell"><b data-count-to="4.9">0</b><span>average rating ★</span></div>
-      <div class="stat-cell"><b data-count-to="94" data-suffix="%">0</b><span>finish their first unit</span></div>
-    </section>
-
     <section class="steps reveal-up">
       <div class="section-head">
         <span class="eyebrow">How it works</span>

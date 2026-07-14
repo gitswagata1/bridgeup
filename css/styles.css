@@ -1279,3 +1279,79 @@ a, .link-inline, .link-back { transition: color .15s, opacity .15s; }
 .tutor-gear { flex: none; background: none; border: 1px solid var(--line); border-radius: 9px; color: var(--muted); width: 38px; cursor: pointer; font-size: 15px; }
 .tutor-gear:hover { color: var(--ink-soft); border-color: var(--blue); }
 @media (max-width: 640px) { .tutor-dock { right: 10px; bottom: 10px; } .tutor-msgs { max-height: 40vh; } }
+
+/* ============================================================
+   LIGHT THEME — toggled via html.light (persisted per browser).
+   Code surfaces (editor, outputs, terminal, tutor bubbles) stay
+   dark on purpose: readable, and clearly "where code lives".
+   ============================================================ */
+.theme-toggle {
+  width: 38px; height: 38px; border-radius: 11px; cursor: pointer;
+  display: grid; place-items: center;
+  background: none; border: 1px solid var(--line); color: var(--ink-soft);
+}
+.theme-toggle:hover { color: var(--ink); border-color: var(--blue); }
+.theme-toggle svg { width: 18px; height: 18px; }
+
+html.light {
+  color-scheme: light;
+  --bg: #f3f5fa;
+  --bg-soft: #e9edf5;
+  --panel: #ffffff;
+  --panel-2: #f7f9fd;
+  --ink: #101828;
+  --ink-soft: #3b4a63;
+  --muted: #64748b;
+  --line: #d8e0ec;
+  --shadow: 0 20px 45px -22px rgba(30, 50, 90, .25);
+}
+
+/* surfaces that hard-code the dark ground */
+html.light .nav { background: rgba(255,255,255,.8); }
+html.light .hero-badge { background: rgba(16,24,40,.05); }
+html.light body { background:
+  radial-gradient(1200px 600px at 80% -10%, rgba(59,130,246,.10), transparent 60%),
+  radial-gradient(900px 500px at 0% 10%, rgba(20,184,166,.08), transparent 55%),
+  var(--bg); }
+html.light body::before { opacity: .5; }
+
+/* light scrollbars */
+html.light * { scrollbar-color: #b9c4d8 transparent; }
+html.light ::-webkit-scrollbar-thumb { background: #b9c4d8; background-clip: padding-box; }
+html.light ::-webkit-scrollbar-thumb:hover { background: #93a3c0; background-clip: padding-box; }
+
+/* soft tinted chips/bands that assumed a dark ground */
+html.light .ck-complete { color: #0d7a6c; }
+html.light .adv-tag { color: #6d28d9; background: rgba(139,92,246,.1); }
+html.light .bonus-tag { color: #b45309; background: rgba(245,158,11,.12); }
+html.light .ts-pending { color: #b45309; }
+html.light .ts-live { color: #0d7a6c; }
+html.light .ts-rejected { color: #be123c; }
+html.light .tq-flag { color: #64748b; }
+html.light .tq-correct .tq-flag { color: #0d7a6c; }
+html.light .tq-wrong .tq-flag { color: #be123c; }
+html.light .tm-error { color: #be123c; }
+html.light .tb-note { color: #be123c; }
+html.light .chal-prompt code { background: #eef2f9; color: #1e3a8a; border-color: var(--line); }
+html.light .tutor-head { background: linear-gradient(90deg, rgba(59,130,246,.1), rgba(20,184,166,.08)); }
+
+/* keep the login showcase, code editor, outputs and terminal dark on light theme —
+   they define their own dark grounds and stay readable as-is. */
+
+/* course gate — take the proficiency test before the course opens */
+.course-gate { display: grid; place-items: center; min-height: 55vh; }
+.gate-card { max-width: 620px; text-align: center; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: clamp(28px, 5vw, 52px); box-shadow: var(--shadow); }
+.gate-ic { width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 16px; display: grid; place-items: center; color: var(--blue); background: rgba(59,130,246,.12); }
+.gate-ic svg { width: 28px; height: 28px; }
+.gate-card h1 { font-size: clamp(24px, 4vw, 34px); letter-spacing: -.02em; margin: 10px 0 14px; }
+.gate-card .lead { margin-bottom: 22px; }
+.gate-note { margin-top: 16px; font-size: 12.5px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.gate-note svg { width: 13px; height: 13px; }
+
+/* light theme: translucent dark cards get a light glass equivalent */
+html.light .chap-card,
+html.light .stat-cell,
+html.light .step,
+html.light .why-item,
+html.light .tcard { background: rgba(255,255,255,.78); }
+html.light .code-window { background: #0e1830; }   /* hero code mock stays a dark island */

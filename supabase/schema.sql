@@ -70,7 +70,7 @@ create table if not exists public.tests (
 create table if not exists public.materials (
   id         uuid primary key default gen_random_uuid(),
   ch         int  not null,
-  kind       text not null check (kind in ('note','link')),
+  kind       text not null check (kind in ('note','link','pdf')),
   title      text not null,
   content    text not null,
   author     uuid not null references public.profiles(id) on delete cascade,
@@ -219,6 +219,10 @@ begin
   if public.my_role() <> 'admin' then raise exception 'Admin only'; end if;
   delete from profiles where id = p_user and role <> 'admin';
 end $$;
+
+-- idempotent: if the table pre-dates PDF materials, widen the kind constraint
+alter table public.materials drop constraint if exists materials_kind_check;
+alter table public.materials add constraint materials_kind_check check (kind in ('note','link','pdf'));
 
 grant execute on function public.vote_test(uuid, boolean, text) to authenticated;
 grant execute on function public.set_role(uuid, text) to authenticated;

@@ -14,33 +14,54 @@ function todayKey() {
 const store = {
   _key() { return "bridgeup:progress:" + (Auth.currentEmail() || "guest"); },
   get() {
+    if (Cloud.enabled && Cloud.me) return Cloud.progressData;
     try { return JSON.parse(localStorage.getItem(this._key()) || "{}"); }
     catch { return {}; }
   },
   set(patch) {
+    if (Cloud.enabled && Cloud.me) {
+      Object.assign(Cloud.progressData, patch);
+      Cloud.progressData.activity = { ...(Cloud.progressData.activity || {}), [todayKey()]: true };
+      Cloud.queueSave();
+      return Cloud.progressData;
+    }
     const next = { ...this.get(), ...patch };
     // every save marks today as an active day — this is what streaks count
     next.activity = { ...(next.activity || {}), [todayKey()]: true };
     localStorage.setItem(this._key(), JSON.stringify(next));
     return next;
   },
-  clear() { localStorage.removeItem(this._key()); }
+  clear() {
+    if (Cloud.enabled && Cloud.me) {
+      Object.keys(Cloud.progressData).forEach(k => delete Cloud.progressData[k]);
+      Cloud.queueSave();
+      return;
+    }
+    localStorage.removeItem(this._key());
+  }
 };
 
 /* Admin helpers — read/reset any account's progress and export the DB. */
 function progressForEmail(email) {
+  if (Cloud.enabled) return Cloud.cache.progressByEmail[email] || {};
   try { return JSON.parse(localStorage.getItem(Auth.progressPrefix + email) || "{}"); }
   catch { return {}; }
 }
 function resetProgressFor(email) { localStorage.removeItem(Auth.progressPrefix + email); }
 
 function adminExport() {
-  const dump = {
-    exportedAt: new Date().toISOString(),
-    accounts: JSON.parse(localStorage.getItem(Auth.accountsKey) || "{}"),
-    progress: {}
-  };
-  Auth.allAccounts().forEach(a => { dump.progress[a.email] = progressForEmail(a.email); });
+  const dump = Cloud.enabled
+    ? {
+        exportedAt: new Date().toISOString(), mode: "campus",
+        accounts: Cloud.accounts(), progress: Cloud.cache.progressByEmail,
+        tests: Cloud.cache.tests, materials: Cloud.cache.materials, results: Cloud.cache.results
+      }
+    : {
+        exportedAt: new Date().toISOString(),
+        accounts: JSON.parse(localStorage.getItem(Auth.accountsKey) || "{}"),
+        progress: {}
+      };
+  if (!Cloud.enabled) Auth.allAccounts().forEach(a => { dump.progress[a.email] = progressForEmail(a.email); });
   const blob = new Blob([JSON.stringify(dump, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -223,10 +244,10 @@ function sharedGet(key) { try { return JSON.parse(localStorage.getItem(key) || "
 function sharedSet(key, v) { localStorage.setItem(key, JSON.stringify(v)); }
 const TESTS_KEY = "bridgeup_tests";
 const MATERIALS_KEY = "bridgeup_materials";
-const allTests = () => sharedGet(TESTS_KEY);
-const saveTests = t => sharedSet(TESTS_KEY, t);
-const allMaterials = () => sharedGet(MATERIALS_KEY);
-const saveMaterials = m => sharedSet(MATERIALS_KEY, m);
+const allTests = () => Cloud.enabled ? Cloud.cache.tests : sharedGet(TESTS_KEY);
+const saveTests = t => sharedSet(TESTS_KEY, t);            // local mode only
+const allMaterials = () => Cloud.enabled ? Cloud.cache.materials : sharedGet(MATERIALS_KEY);
+const saveMaterials = m => sharedSet(MATERIALS_KEY, m);    // local mode only
 const uid = () => "t" + Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
 
 /* Faculty tests are peer-reviewed before students see them: a panel of up
@@ -237,6 +258,7 @@ function approvalsNeededFor(test) {
   return Math.max(1, Math.min(3, others));
 }
 function refreshTestStatus(t) {
+  if (Cloud.enabled) return t;   // campus mode: status is decided server-side (vote_test RPC)
   if (t.status === "pending") {
     const need = approvalsNeededFor(t);
     if ((t.approvals || []).length >= need) t.status = "approved";
@@ -251,10 +273,14 @@ function updateTest(id, fn) {
   fn(t); refreshTestStatus(t); saveTests(tests);
 }
 function approvedTests() { return allTests().map(refreshTestStatus).filter(t => t.status === "approved"); }
-function testResultFor(p, id) { return (p.tests || {})[id] || null; }
+function testResultFor(p, id) {
+  if (Cloud.enabled) return Cloud.myResult(id);
+  return (p.tests || {})[id] || null;
+}
 function testMarks(testId) {
+  if (Cloud.enabled) return Cloud.marksFor(testId);
   return Auth.allAccounts().filter(a => a.role === "student").map(a => {
-    const r = testResultFor(progressForEmail(a.email), testId);
+    const r = (progressForEmail(a.email).tests || {})[testId];
     return r ? { name: a.name, email: a.email, ...r } : null;
   }).filter(Boolean).sort((a, b) => b.score - a.score);
 }
@@ -656,7 +682,7 @@ function viewAuth() {
         <div class="role-toggle" role="tablist" aria-label="I am a">
           <button class="role-opt ${authRole === "student" ? "on" : ""}" data-auth-role="student">${icon("cap")} Student</button>
           <button class="role-opt ${isFaculty ? "on" : ""}" data-auth-role="faculty">${icon("user")} Faculty</button>
-          <button class="role-opt role-opt-admin ${isAdmin ? "on" : ""}" data-auth-role="admin">${icon("shield")} Admin</button>
+          ${Cloud.enabled ? "" : `<button class="role-opt role-opt-admin ${isAdmin ? "on" : ""}" data-auth-role="admin">${icon("shield")} Admin</button>`}
         </div>
 
         ${isAdmin ? "" : `
@@ -696,7 +722,9 @@ function viewAuth() {
             ? `New to BridgeUp? <button class="link-inline" data-auth-tab="signup">Create an account</button>`
             : `Already have an account? <button class="link-inline" data-auth-tab="login">Log in</button>`}
         </p>`}
-        <p class="auth-note">${isAdmin
+        <p class="auth-note">${Cloud.enabled
+          ? `${icon("lock")} Campus mode — one account, every device. ${isFaculty ? "Faculty" : "Students"} use their <b>${domain}</b> email. Your progress syncs automatically.`
+          : isAdmin
           ? `${icon("shield")} Admin console access. Demo login — <b>${Auth.ADMIN_EMAIL}</b> / <b>${Auth.ADMIN_DEFAULT_PW}</b>. Change these before real use.`
           : isLogin
             ? `${icon("lock")} Demo login — <b>${isFaculty ? "rao@vit.ac.in" : "swagata@vitstudent.ac.in"}</b> / <b>${isFaculty ? "teach123" : "python123"}</b>. Try it instantly.`
@@ -1057,6 +1085,7 @@ function viewAdmin() {
           <p class="lead">Full control of BridgeUp — student progress, accounts, analytics, and the raw database.</p>
         </div>
         <div class="admin-top-actions">
+          ${Cloud.enabled ? `<button class="btn btn-ghost" data-cloud-refresh>↻ Refresh data</button>` : ""}
           <button class="btn btn-ghost" data-admin-raw>View raw DB</button>
           <button class="btn" data-admin-export>${icon("download")} Export JSON</button>
         </div>
@@ -1720,7 +1749,10 @@ function viewFaculty() {
           <h1>Your class, at a glance</h1>
           <p class="lead">Track every student through the Python course — who's flying, who's stuck, and where. Welcome, ${esc(u.name.split(" ")[0])}.</p>
         </div>
-        <button class="btn btn-ghost" data-nav="course">Preview the course →</button>
+        <div class="admin-top-actions">
+          ${Cloud.enabled ? `<button class="btn btn-ghost" data-cloud-refresh>↻ Refresh data</button>` : ""}
+          <button class="btn btn-ghost" data-nav="course">Preview the course →</button>
+        </div>
       </div>
 
       <div class="stat-grid">
@@ -1966,14 +1998,20 @@ document.addEventListener("click", (e) => {
   const aReset = e.target.closest("[data-admin-reset]");
   if (aReset) {
     const email = aReset.dataset.adminReset;
-    if (confirm(`Reset ALL progress (exam score + completed lessons) for ${email}?`)) { resetProgressFor(email); render("admin"); }
+    if (confirm(`Reset ALL progress (exam score + completed lessons) for ${email}?`)) {
+      if (Cloud.enabled) { (async () => { const r = await Cloud.resetProgress(email); if (r.error) alert(r.error); render("admin"); })(); return; }
+      resetProgressFor(email); render("admin");
+    }
     return;
   }
   // admin: delete a user
   const aDelete = e.target.closest("[data-admin-delete]");
   if (aDelete) {
     const email = aDelete.dataset.adminDelete;
-    if (confirm(`Delete the account ${email} and all of its progress? This cannot be undone.`)) { Auth.deleteAccount(email); render("admin"); }
+    if (confirm(`Delete the account ${email} and all of its progress? This cannot be undone.`)) {
+      if (Cloud.enabled) { (async () => { const r = await Cloud.deleteUser(email); if (r.error) alert(r.error); render("admin"); })(); return; }
+      Auth.deleteAccount(email); render("admin");
+    }
     return;
   }
   // admin: export / raw DB
@@ -2147,6 +2185,14 @@ document.addEventListener("click", (e) => {
     });
     if (unanswered && !confirm(`${unanswered} question${unanswered === 1 ? " is" : "s are"} unanswered and will score 0. Submit anyway?`)) return;
     const score = t.questions.reduce((s, q, i) => s + (answers[i] === q.ans ? 1 : 0), 0);
+    if (Cloud.enabled) {
+      (async () => {
+        const r = await Cloud.submitResult(t.id, score, t.questions.length, answers);
+        if (r.error) alert(r.error);
+        render("test");
+      })();
+      return;
+    }
     const tests = { ...(store.get().tests || {}) };
     tests[t.id] = { score, total: t.questions.length, at: Date.now(), answers };
     store.set({ tests });
@@ -2179,6 +2225,15 @@ document.addEventListener("click", (e) => {
     readBuilder();
     const err = builderValid();
     if (err) { const w = document.getElementById("tbWarn"); if (w) w.textContent = err; return false; }
+    if (Cloud.enabled) {
+      (async () => {
+        const r = await Cloud.saveTest({ id: testBuilder.id, title: testBuilder.title.trim(), ch: testBuilder.ch, questions: testBuilder.questions }, status);
+        if (r.error) { const w = document.getElementById("tbWarn"); if (w) w.textContent = r.error; return; }
+        testBuilder = null;
+        render("faculty");
+      })();
+      return true;
+    }
     const u = Auth.currentUser();
     const tests = allTests();
     const existing = testBuilder.id && tests.find(x => x.id === testBuilder.id);
@@ -2201,12 +2256,18 @@ document.addEventListener("click", (e) => {
   if (e.target.closest("[data-tb-submit]")) { saveBuilder("pending"); return; }
 
   const submitT = e.target.closest("[data-test-submit]");
-  if (submitT) { updateTest(submitT.dataset.testSubmit, t => { t.status = "pending"; t.approvals = []; t.rejections = []; }); render("faculty"); return; }
+  if (submitT) {
+    if (Cloud.enabled) { (async () => { const r = await Cloud.setTestStatus(submitT.dataset.testSubmit, "pending", true); if (r.error) alert(r.error); render("faculty"); })(); return; }
+    updateTest(submitT.dataset.testSubmit, t => { t.status = "pending"; t.approvals = []; t.rejections = []; });
+    render("faculty");
+    return;
+  }
 
   const delT = e.target.closest("[data-test-del]");
   if (delT) {
     const t = allTests().find(x => x.id === delT.dataset.testDel);
     if (t && confirm(`Delete the test "${t.title}"? Student marks for it are kept but the test disappears.`)) {
+      if (Cloud.enabled) { (async () => { const r = await Cloud.deleteTest(t.id); if (r.error) alert(r.error); render(Auth.isAdmin() ? "admin" : "faculty"); })(); return; }
       saveTests(allTests().filter(x => x.id !== t.id));
       render(Auth.isAdmin() ? "admin" : "faculty");
     }
@@ -2216,6 +2277,7 @@ document.addEventListener("click", (e) => {
   /* ---------- faculty tests: review panel ---------- */
   const approveT = e.target.closest("[data-test-approve]");
   if (approveT) {
+    if (Cloud.enabled) { (async () => { const r = await Cloud.vote(approveT.dataset.testApprove, true); if (r.error) alert(r.error); render("faculty"); })(); return; }
     const me = Auth.currentUser().email;
     updateTest(approveT.dataset.testApprove, t => { if (!t.approvals.includes(me) && t.author !== me) t.approvals.push(me); });
     render("faculty");
@@ -2225,13 +2287,19 @@ document.addEventListener("click", (e) => {
   if (rejectT) {
     const reason = prompt("Why should this test not go live? (shared with the author)");
     if (reason === null) return;
+    if (Cloud.enabled) { (async () => { const r = await Cloud.vote(rejectT.dataset.testReject, false, reason); if (r.error) alert(r.error); render("faculty"); })(); return; }
     const me = Auth.currentUser().email;
     updateTest(rejectT.dataset.testReject, t => { if (!t.rejections.some(r => r.email === me) && t.author !== me) t.rejections.push({ email: me, reason }); });
     render("faculty");
     return;
   }
   const publishT = e.target.closest("[data-test-publish]");
-  if (publishT && Auth.isAdmin()) { updateTest(publishT.dataset.testPublish, t => { t.status = "approved"; }); render("admin"); return; }
+  if (publishT && Auth.isAdmin()) {
+    if (Cloud.enabled) { (async () => { const r = await Cloud.setTestStatus(publishT.dataset.testPublish, "approved"); if (r.error) alert(r.error); render("admin"); })(); return; }
+    updateTest(publishT.dataset.testPublish, t => { t.status = "approved"; });
+    render("admin");
+    return;
+  }
 
   /* ---------- faculty materials ---------- */
   if (e.target.closest("[data-mat-add]")) {
@@ -2239,22 +2307,32 @@ document.addEventListener("click", (e) => {
     const content = (document.getElementById("mat-content") || {}).value || "";
     const warn = document.getElementById("matWarn");
     if (!title.trim() || !content.trim()) { if (warn) warn.textContent = "Both a title and content are needed."; return; }
+    const m = {
+      ch: Number(document.getElementById("mat-ch").value),
+      kind: document.getElementById("mat-kind").value,
+      title: title.trim(), content: content.trim()
+    };
+    if (Cloud.enabled) { (async () => { const r = await Cloud.addMaterial(m); if (r.error) alert(r.error); render("faculty"); })(); return; }
     const u = Auth.currentUser();
     const mats = allMaterials();
-    mats.push({
-      id: uid(), ch: Number(document.getElementById("mat-ch").value),
-      kind: document.getElementById("mat-kind").value,
-      title: title.trim(), content: content.trim(),
-      author: u.email, authorName: u.name, at: Date.now()
-    });
+    mats.push({ id: uid(), ...m, author: u.email, authorName: u.name, at: Date.now() });
     saveMaterials(mats);
     render("faculty");
     return;
   }
   const delM = e.target.closest("[data-mat-del]");
   if (delM) {
+    if (Cloud.enabled) { (async () => { const r = await Cloud.deleteMaterial(delM.dataset.matDel); if (r.error) alert(r.error); render(Auth.isAdmin() ? "admin" : "faculty"); })(); return; }
     saveMaterials(allMaterials().filter(m => m.id !== delM.dataset.matDel));
     render(Auth.isAdmin() ? "admin" : "faculty");
+    return;
+  }
+
+  /* ---------- campus mode: manual data refresh ---------- */
+  if (e.target.closest("[data-cloud-refresh]")) {
+    const btn = e.target.closest("[data-cloud-refresh]");
+    btn.disabled = true;
+    (async () => { await Cloud.refreshAll(true); render(currentRoute || "home"); })();
     return;
   }
 
@@ -2321,7 +2399,12 @@ document.addEventListener("submit", async (e) => {
 /* admin: change a user's role via the table dropdown */
 document.addEventListener("change", (e) => {
   const sel = e.target.closest("[data-admin-role]");
-  if (sel) { Auth.setRole(sel.dataset.adminRole, sel.value); render("admin"); }
+  if (!sel) return;
+  if (Cloud.enabled) {
+    (async () => { const r = await Cloud.setRole(sel.dataset.adminRole, sel.value); if (r.error) alert(r.error); render("admin"); })();
+    return;
+  }
+  Auth.setRole(sel.dataset.adminRole, sel.value); render("admin");
 });
 
 /* Tab inserts spaces inside a code editor instead of leaving it */
@@ -2371,6 +2454,7 @@ const DEMO_SEED = [
 ];
 
 async function seedDemo() {
+  if (Cloud.enabled) return;   // campus mode: real accounts only, no demo cohort
   const SEED_V = "2";   // bump to reseed newly-added demo accounts (never clobbers existing ones)
   if (localStorage.getItem("bridgeup_demo_seeded") === SEED_V) return;
   const accounts = JSON.parse(localStorage.getItem(Auth.accountsKey) || "{}");
@@ -2395,8 +2479,13 @@ async function seedDemo() {
   localStorage.setItem("bridgeup_demo_seeded", SEED_V);
 }
 
-/* ---------- Boot: seed admin + demo data, then gate on auth ---------- */
-Auth.init().then(seedDemo).then(() => {
+/* ---------- Boot: campus mode if configured, else local demo ---------- */
+(async () => {
+  if (Cloud.configured()) {
+    try { await Cloud.init(); }
+    catch (e) { console.warn("BridgeUp: cloud unavailable, using local mode —", e); }
+  }
+  if (!Cloud.enabled) { await Auth.init(); await seedDemo(); }
   if (Auth.currentUser()) enterApp();
   else renderAuth();
-});
+})();

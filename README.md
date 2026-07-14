@@ -158,7 +158,9 @@ bridgeup/
 ├── css/
 │   └── styles.css      # Design system, views, responsive rules, motion
 ├── js/
-│   ├── auth.js         # Client-side accounts, roles, SHA-256 hashing (localStorage)
+│   ├── config.js       # Deployment config: empty = local demo, filled = campus mode
+│   ├── cloud.js        # Supabase adapter: auth, sync, tests, marks (campus mode)
+│   ├── auth.js         # Accounts & roles — local demo store, or delegates to cloud
 │   ├── data.js         # Proficiency test, three levels, scoring
 │   ├── handbook.js     # Course content: 8 chapters / 99 lessons (official Python Tutorial)
 │   ├── runner.js       # In-browser Python via Pyodide (stdin, loop guard, REPL echo)
@@ -166,6 +168,9 @@ bridgeup/
 │   └── app.js          # Views, routing, progress, quizzes, challenges, gamification, dashboards, demo seed
 ├── docs/
 │   └── banner.svg
+├── supabase/
+│   └── schema.sql      # Campus-mode database: tables, RLS, approval RPCs
+├── SETUP-CLOUD.md      # 5-minute campus deployment guide
 ├── package.json
 ├── LICENSE
 └── README.md
@@ -181,17 +186,27 @@ No build step — deployment is "host the files".
 - **Netlify / Vercel** — import the repo with **no build command**, publish directory = project root.
 - **University intranet** — copy the folder to any static web server.
 
+### 🏫 Campus mode — real multi-device deployment
+
+Out of the box the site runs as a per-browser demo. To deploy for a real cohort
+(**~1,000 students + 15 faculty fit comfortably in Supabase's free tier**),
+create a free Supabase project, run [`supabase/schema.sql`](supabase/schema.sql),
+and paste two values into [`js/config.js`](js/config.js) — accounts, progress,
+tests, marks and materials become real and shared across every device, with
+roles assigned server-side and all rules enforced by Postgres row-level
+security. Full walkthrough: **[SETUP-CLOUD.md](SETUP-CLOUD.md)** (≈5 minutes).
+
 ---
 
 ## 🔒 Security note
 
-Authentication is **demo-grade by design** and entirely client-side: accounts, sessions, and progress live in each visitor's own browser. Passwords are hashed, but anyone with local access can inspect `localStorage`. Ideal for a classroom pilot or portfolio piece — for production, swap in a real backend (see roadmap).
+In **local demo mode**, accounts and progress live in each visitor's own browser (passwords stored only as salted hashes) — ideal for trying the product. In **campus mode**, authentication and data move to Supabase: real sessions, server-assigned roles, and Postgres row-level security on every table — see [SETUP-CLOUD.md](SETUP-CLOUD.md).
 
 ---
 
 ## 🗺 Roadmap
 
-- **Scale** — university backend: SSO sign-in, a real cohort database, section management, exportable analytics.
+- **Scale** — ✅ shipped: campus mode with a real cohort database (Supabase). Next: VIT SSO sign-in and section management.
 - **Beyond Python** — C and Java tracks to match first-year curricula.
 - **Assessment** — proctored test modes and LMS integration so progress flows into existing systems.
 

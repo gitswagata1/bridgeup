@@ -14,7 +14,7 @@
    ============================================================ */
 
 window.BRIDGEUP_CONFIG = {
-  supabaseUrl: "oarejgsgvoynanuriyjt",        // e.g. "https://abcdefgh.supabase.co"
-  supabaseAnonKey: "ap-southeast-2",    // the long "anon / public" key
+  supabaseUrl: "https://oarejgsgvoynanuriyjt.supabase.co",
+  supabaseAnonKey: "",    // PASTE the "anon public" key here (Project Settings → API Keys, starts with eyJ… or sb_publishable_…)
   adminEmail: "theswagata1@gmail.com"   // this account signs in as admin
 };

@@ -351,6 +351,11 @@ let openChapter = null;
 let authMode = "login";
 let authRole = "student";
 
+/* First name for greetings — skips honorifics so "Dr. Meera Rao" greets as "Meera". */
+function firstNameOf(name) {
+  return String(name || "").replace(/^(dr|prof|mr|mrs|ms)\.?\s+/i, "").split(" ")[0] || "there";
+}
+
 function esc(s) {
   return String(s).replace(/[&<>"']/g, c => (
     { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
@@ -571,7 +576,7 @@ function studentProgressTable(rows, admin) {
   if (!rows.length) return `<p class="muted">No students have signed up yet. As soon as they do, their progress will appear here.</p>`;
   return `<div class="table-scroll"><table class="admin-table stu-table">
     <thead><tr>
-      <th>Student</th>${admin ? "<th>Role</th>" : ""}<th>Placement</th><th>Course progress</th>
+      <th>Student</th>${admin ? "<th>Role</th>" : ""}<th>Level</th><th>Course progress</th>
       <th class="ctr">Chapters</th><th class="ctr">Quizzes</th><th class="ctr">Challenges</th>${admin ? "<th></th>" : ""}
     </tr></thead>
     <tbody>
@@ -781,7 +786,7 @@ function viewHome() {
   const hasResult = typeof saved.score === "number";
   const place = hasResult ? placementFor(saved.score) : null;
   const user = Auth.currentUser();
-  const firstName = user ? esc(user.name.split(" ")[0]) : "there";
+  const firstName = user ? esc(firstNameOf(user.name)) : "there";
 
   return `
     <section class="hero reveal-up">
@@ -1173,7 +1178,29 @@ function viewAdmin() {
 
 const REC_CHAPTER = { beginner: 1, intermediate: 3, advanced: 7 };
 
+/* Students unlock the course by taking the proficiency test first.
+   Faculty and admin can always preview. */
+function courseLocked() {
+  const u = Auth.currentUser();
+  return (!u || u.role === "student") && typeof store.get().score !== "number";
+}
+
+function viewCourseGate() {
+  return `
+    <section class="course-gate reveal-up">
+      <div class="gate-card">
+        <div class="gate-ic">${icon("target")}</div>
+        <span class="eyebrow">First step</span>
+        <h1>Unlock your course with the <span class="grad">coding proficiency test.</span></h1>
+        <p class="lead">Ten questions, about two minutes. It places you at the right level — Beginner, Intermediate or Advanced — so the course starts exactly where you should. Your course opens the moment you finish.</p>
+        <button class="btn btn-xl btn-finish" data-nav="exam">Start the test →</button>
+        <p class="muted gate-note">${icon("lock")} No pressure — the score never goes on a record, it only shapes your path.</p>
+      </div>
+    </section>`;
+}
+
 function viewCourse() {
+  if (courseLocked()) return viewCourseGate();
   const p = store.get();
   const done = sectionsDoneForProgress(p);
   const pct = Math.round(done / TOTAL_SECTIONS * 100);
@@ -1379,6 +1406,7 @@ function answerQuiz(ch, qi, oi) {
 }
 
 function viewChapter(ch) {
+  if (courseLocked()) return viewCourseGate();
   const chapter = HANDBOOK.find(c => c.ch === ch);
   if (!chapter) return viewCourse();
   const meta = CH_META[ch];
@@ -1465,6 +1493,8 @@ function viewChapter(ch) {
                 <div class="mat-top"><b>${esc(m.title)}</b><span class="muted">by ${esc(m.authorName)} · ${new Date(m.at).toLocaleDateString()}</span></div>
                 ${m.kind === "link"
                   ? `<a class="mat-link" href="${esc(m.content)}" target="_blank" rel="noopener">${esc(m.content)} ${icon("external")}</a>`
+                  : m.kind === "pdf"
+                  ? `<a class="mat-link mat-pdf" href="${esc(m.content)}" download="${esc(m.title)}.pdf">${icon("download")} Download PDF — ${esc(m.title)}</a>`
                   : `<p class="mat-note">${esc(m.content).replace(/\n/g, "<br>")}</p>`}
               </div>`).join("")}
           </div>`;
@@ -1496,6 +1526,7 @@ function viewChapter(ch) {
 }
 
 function viewSection(id) {
+  if (courseLocked()) return viewCourseGate();
   const s = sectionById(id);
   if (!s) return viewCourse();
   const meta = CH_META[s.chapter.ch] || { color: "#3b82f6", icon: "layers" };
@@ -1741,7 +1772,7 @@ function viewFaculty() {
         <div>
           <span class="pill pill-faculty">Faculty dashboard</span>
           <h1>Your class, at a glance</h1>
-          <p class="lead">Track every student through the Python course — who's flying, who's stuck, and where. Welcome, ${esc(u.name.split(" ")[0])}.</p>
+          <p class="lead">Track every student through the Python course — who's flying, who's stuck, and where. Welcome, ${esc(firstNameOf(u.name))}.</p>
         </div>
         <div class="admin-top-actions">
           ${Cloud.enabled ? `<button class="btn btn-ghost" data-cloud-refresh>↻ Refresh data</button>` : ""}
@@ -1895,10 +1926,13 @@ function facultyMaterialPanel(u) {
         <div class="mat-form">
           <div class="tb-row">
             <label>Chapter <select id="mat-ch">${HANDBOOK.map(c => `<option value="${c.ch}">Chapter ${c.ch} — ${esc(c.title)}</option>`).join("")}</select></label>
-            <label>Type <select id="mat-kind"><option value="note">Note</option><option value="link">Link</option></select></label>
+            <label>Type <select id="mat-kind"><option value="note">Note</option><option value="link">Link</option><option value="pdf">PDF file</option></select></label>
           </div>
           <label>Title <input id="mat-title" type="text" placeholder="e.g. Extra examples on loops"></label>
-          <label>Content <textarea id="mat-content" rows="3" placeholder="The note text, or a URL for links"></textarea></label>
+          <label>Content <textarea id="mat-content" rows="3" placeholder="The note text, or a URL for links (ignored for PDF uploads)"></textarea></label>
+          <label>PDF file <span class="muted" style="font-weight:400">— used when Type is “PDF file”, up to 2.5 MB</span>
+            <input id="mat-file" type="file" accept="application/pdf">
+          </label>
           <div class="tb-actions"><span class="muted" id="matWarn"></span><span class="tb-spacer"></span><button class="btn" data-mat-add>Add material</button></div>
         </div>
         ${mine.length ? `
@@ -2298,20 +2332,32 @@ document.addEventListener("click", (e) => {
   /* ---------- faculty materials ---------- */
   if (e.target.closest("[data-mat-add]")) {
     const title = (document.getElementById("mat-title") || {}).value || "";
-    const content = (document.getElementById("mat-content") || {}).value || "";
+    const kind = document.getElementById("mat-kind").value;
     const warn = document.getElementById("matWarn");
-    if (!title.trim() || !content.trim()) { if (warn) warn.textContent = "Both a title and content are needed."; return; }
-    const m = {
-      ch: Number(document.getElementById("mat-ch").value),
-      kind: document.getElementById("mat-kind").value,
-      title: title.trim(), content: content.trim()
+    const finish = (content) => {
+      const m = { ch: Number(document.getElementById("mat-ch").value), kind, title: title.trim(), content };
+      if (Cloud.enabled) { (async () => { const r = await Cloud.addMaterial(m); if (r.error) alert(r.error); render("faculty"); })(); return; }
+      const u = Auth.currentUser();
+      const mats = allMaterials();
+      mats.push({ id: uid(), ...m, author: u.email, authorName: u.name, at: Date.now() });
+      saveMaterials(mats);
+      render("faculty");
     };
-    if (Cloud.enabled) { (async () => { const r = await Cloud.addMaterial(m); if (r.error) alert(r.error); render("faculty"); })(); return; }
-    const u = Auth.currentUser();
-    const mats = allMaterials();
-    mats.push({ id: uid(), ...m, author: u.email, authorName: u.name, at: Date.now() });
-    saveMaterials(mats);
-    render("faculty");
+    if (!title.trim()) { if (warn) warn.textContent = "Give the material a title."; return; }
+    if (kind === "pdf") {
+      const file = ((document.getElementById("mat-file") || {}).files || [])[0];
+      if (!file) { if (warn) warn.textContent = "Choose a PDF file to upload."; return; }
+      if (file.type !== "application/pdf") { if (warn) warn.textContent = "Only PDF files are supported here."; return; }
+      if (file.size > 2.5 * 1024 * 1024) { if (warn) warn.textContent = "That PDF is over 2.5 MB — compress it or share it as a link instead."; return; }
+      const reader = new FileReader();
+      reader.onload = () => finish(reader.result);
+      reader.onerror = () => { if (warn) warn.textContent = "Could not read that file — try again."; };
+      reader.readAsDataURL(file);
+      return;
+    }
+    const content = (document.getElementById("mat-content") || {}).value || "";
+    if (!content.trim()) { if (warn) warn.textContent = "Both a title and content are needed."; return; }
+    finish(content.trim());
     return;
   }
   const delM = e.target.closest("[data-mat-del]");
@@ -2472,6 +2518,22 @@ async function seedDemo() {
   localStorage.setItem(Auth.accountsKey, JSON.stringify(accounts));
   localStorage.setItem("bridgeup_demo_seeded", SEED_V);
 }
+
+/* ---------- Theme: dark (default) ⇄ light, persisted per browser ---------- */
+const THEME_KEY = "bridgeup_theme";
+const SUN = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>`;
+const MOON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>`;
+
+function paintThemeToggle() {
+  const btn = document.getElementById("themeToggle");
+  if (btn) btn.innerHTML = document.documentElement.classList.contains("light") ? MOON : SUN;
+}
+document.getElementById("themeToggle")?.addEventListener("click", () => {
+  const light = document.documentElement.classList.toggle("light");
+  try { localStorage.setItem(THEME_KEY, light ? "light" : "dark"); } catch (e) {}
+  paintThemeToggle();
+});
+paintThemeToggle();
 
 /* ---------- Boot: campus mode if configured, else local demo ---------- */
 (async () => {

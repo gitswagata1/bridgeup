@@ -37,21 +37,21 @@ It's a single-page app in plain HTML, CSS, and JavaScript — **no framework, no
 
 ## ✨ Features
 
-- **Proficiency test → personalised track.** A 10-question diagnostic (~2 minutes) scores the learner, places them into one of three levels, and shows a per-topic breakdown of strengths and gaps.
+- **Proficiency test → personalised track.** A 10-question diagnostic (~2 minutes) scores the learner, places them into one of three levels, and shows a per-topic breakdown of strengths and gaps. **The test gates the course** — students unlock chapters by taking it first (faculty and admin can always preview).
 - **A real course, not a slideshow.** *The Python Handbook* — **8 chapters, 99 lessons** adapted from the [official Python Tutorial](https://docs.python.org/3/tutorial/), with source attribution throughout. Topics that step beyond the basics carry an **Advanced** tag; optional extras carry a **Bonus** tag.
 - **Python that actually runs.** An in-page scratchpad executes real CPython via [Pyodide](https://pyodide.org) (WebAssembly): 165 runnable examples, `input()` support, REPL-style expression echo, and an infinite-loop watchdog so the tab never freezes.
 - **Completion that means something.** A chapter closes only when its lessons are read, its quiz is passed at ≥70%, and its **graded coding challenge** produces the right output.
 - **Gamification built in.** XP for every action, five levels from *Newcomer* to *Pythonista*, daily learning **streaks**, and a downloadable **certificate of completion** with a verification code — see [Gamification](#-gamification).
 - **Faculty-authored tests with peer approval.** Faculty build MCQ tests in a visual editor; a review panel of up to **5 faculty** decides — majority approval publishes the test to students. One attempt per student, auto-graded, with a full answer review.
 - **Marks for faculty.** Every test's results roll into the faculty dashboard — per-student marks, attempt counts, and class averages.
-- **Faculty materials.** Faculty add notes and links to any chapter; they appear inside the chapter for every student. Admin has oversight of both tests and materials.
+- **Faculty materials.** Faculty add notes, links, or **uploaded PDFs** (up to 2.5 MB) to any chapter; they appear inside the chapter for every student. Admin has oversight of both tests and materials.
 - **Personal AI tutor.** A lesson-aware chat tutor on every lesson page, powered by **each user's own free Gemini API key** — the key lives only in their browser and calls Google directly; BridgeUp never sees it.
 - **Three roles, one login.**
   - **Student** — takes the course and faculty tests, tracks progress, downloads chapter PDFs.
   - **Faculty** — class analytics and marks, plus authoring: tests (peer-reviewed) and chapter materials.
   - **Admin** — a full console: every account, live progress, role management, test/material oversight, database export, resets.
 - **Offline study guides.** Every chapter exports a formatted **PDF** (objectives, takeaways, practice, full lesson content) via [jsPDF](https://github.com/parallax/jsPDF).
-- **Polished UX.** Cross-fade view transitions, keyboard-accessible focus states, custom scrollbars, a responsive dark theme, and zero horizontal overflow down to phone widths.
+- **Polished UX.** **Light and dark themes** with a one-click toggle (persisted per browser; code surfaces stay dark in both), cross-fade view transitions, keyboard-accessible focus states, custom scrollbars, and zero horizontal overflow down to phone widths.
 
 ---
 

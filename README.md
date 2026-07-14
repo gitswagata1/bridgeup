@@ -42,10 +42,14 @@ It's a single-page app in plain HTML, CSS, and JavaScript — **no framework, no
 - **Python that actually runs.** An in-page scratchpad executes real CPython via [Pyodide](https://pyodide.org) (WebAssembly): 165 runnable examples, `input()` support, REPL-style expression echo, and an infinite-loop watchdog so the tab never freezes.
 - **Completion that means something.** A chapter closes only when its lessons are read, its quiz is passed at ≥70%, and its **graded coding challenge** produces the right output.
 - **Gamification built in.** XP for every action, five levels from *Newcomer* to *Pythonista*, daily learning **streaks**, and a downloadable **certificate of completion** with a verification code — see [Gamification](#-gamification).
+- **Faculty-authored tests with peer approval.** Faculty build MCQ tests in a visual editor; a review panel of up to **5 faculty** decides — majority approval publishes the test to students. One attempt per student, auto-graded, with a full answer review.
+- **Marks for faculty.** Every test's results roll into the faculty dashboard — per-student marks, attempt counts, and class averages.
+- **Faculty materials.** Faculty add notes and links to any chapter; they appear inside the chapter for every student. Admin has oversight of both tests and materials.
+- **Personal AI tutor.** A lesson-aware chat tutor on every lesson page, powered by **each user's own free Gemini API key** — the key lives only in their browser and calls Google directly; BridgeUp never sees it.
 - **Three roles, one login.**
-  - **Student** — takes the course, tracks progress, downloads chapter PDFs.
-  - **Faculty** — a read-only class dashboard: cohort analytics, per-chapter engagement, per-student drill-down.
-  - **Admin** — a full console: every account, live progress, role management, database export, resets.
+  - **Student** — takes the course and faculty tests, tracks progress, downloads chapter PDFs.
+  - **Faculty** — class analytics and marks, plus authoring: tests (peer-reviewed) and chapter materials.
+  - **Admin** — a full console: every account, live progress, role management, test/material oversight, database export, resets.
 - **Offline study guides.** Every chapter exports a formatted **PDF** (objectives, takeaways, practice, full lesson content) via [jsPDF](https://github.com/parallax/jsPDF).
 - **Polished UX.** Cross-fade view transitions, keyboard-accessible focus states, custom scrollbars, a responsive dark theme, and zero horizontal overflow down to phone widths.
 
@@ -59,6 +63,7 @@ A demo cohort is seeded in code on first load, so every dashboard is populated t
 | ----------- | ------------------------------ | ------------ |
 | **Admin**   | `admin@bridgeup.app`           | `admin123`   |
 | **Faculty** | `rao@vit.ac.in`                | `teach123`   |
+| **Faculty** | `iyer@vit.ac.in`               | `teach123`   |
 | **Student** | `swagata@vitstudent.ac.in`     | `python123`  |
 
 More demo students, with varied progress for realistic dashboards (all `python123`): `aisha@`, `ben@`, `cara@` — `vitstudent.ac.in`.

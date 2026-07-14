@@ -215,6 +215,92 @@ function certificateEligible(p) {
   const s = studentSummary(p);
   return s.sec === TOTAL_SECTIONS && s.quizzes === HANDBOOK.length && s.challenges === HANDBOOK.length;
 }
+
+/* ---------- Shared stores: faculty tests & materials ----------
+   Cross-role data (any signed-in role reads the same list). Demo-grade,
+   same localStorage constraints as accounts. */
+function sharedGet(key) { try { return JSON.parse(localStorage.getItem(key) || "[]"); } catch { return []; } }
+function sharedSet(key, v) { localStorage.setItem(key, JSON.stringify(v)); }
+const TESTS_KEY = "bridgeup_tests";
+const MATERIALS_KEY = "bridgeup_materials";
+const allTests = () => sharedGet(TESTS_KEY);
+const saveTests = t => sharedSet(TESTS_KEY, t);
+const allMaterials = () => sharedGet(MATERIALS_KEY);
+const saveMaterials = m => sharedSet(MATERIALS_KEY, m);
+const uid = () => "t" + Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
+
+/* Faculty tests are peer-reviewed before students see them: a panel of up
+   to 5 faculty decides, majority (3 approvals) publishes. Small pilots
+   scale the threshold down to however many other faculty exist. */
+function approvalsNeededFor(test) {
+  const others = Auth.allAccounts().filter(a => a.role === "faculty" && a.email !== test.author).length;
+  return Math.max(1, Math.min(3, others));
+}
+function refreshTestStatus(t) {
+  if (t.status === "pending") {
+    const need = approvalsNeededFor(t);
+    if ((t.approvals || []).length >= need) t.status = "approved";
+    else if ((t.rejections || []).length >= need) t.status = "rejected";
+  }
+  return t;
+}
+function updateTest(id, fn) {
+  const tests = allTests();
+  const t = tests.find(x => x.id === id);
+  if (!t) return;
+  fn(t); refreshTestStatus(t); saveTests(tests);
+}
+function approvedTests() { return allTests().map(refreshTestStatus).filter(t => t.status === "approved"); }
+function testResultFor(p, id) { return (p.tests || {})[id] || null; }
+function testMarks(testId) {
+  return Auth.allAccounts().filter(a => a.role === "student").map(a => {
+    const r = testResultFor(progressForEmail(a.email), testId);
+    return r ? { name: a.name, email: a.email, ...r } : null;
+  }).filter(Boolean).sort((a, b) => b.score - a.score);
+}
+const TEST_STATUS = {
+  draft:    { label: "Draft",        cls: "ts-draft" },
+  pending:  { label: "In review",    cls: "ts-pending" },
+  approved: { label: "Live",         cls: "ts-live" },
+  rejected: { label: "Rejected",     cls: "ts-rejected" }
+};
+
+/* ---------- Personal AI tutor ----------
+   "Personal" is literal: each user brings their own free Gemini API key,
+   stored only in this browser. Requests go straight to Google — there is
+   no BridgeUp server in between. */
+const Tutor = {
+  KEY: "bridgeup_llm_key",
+  MODEL: "bridgeup_llm_model",
+  MODELS: ["gemini-2.5-flash", "gemini-2.0-flash"],
+  key() { return localStorage.getItem(this.KEY) || ""; },
+  model() { return localStorage.getItem(this.MODEL) || this.MODELS[0]; },
+  save(key, model) {
+    if (key) localStorage.setItem(this.KEY, key.trim()); else localStorage.removeItem(this.KEY);
+    if (model) localStorage.setItem(this.MODEL, model);
+  },
+  async ask(history, sys) {
+    const url = "https://generativelanguage.googleapis.com/v1beta/models/" +
+      this.model() + ":generateContent?key=" + encodeURIComponent(this.key());
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: sys }] },
+        contents: history.map(m => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: m.text }] })),
+        generationConfig: { maxOutputTokens: 600, temperature: 0.4 }
+      })
+    });
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      throw new Error((e.error && e.error.message) || "Request failed (" + r.status + ")");
+    }
+    const data = await r.json();
+    const text = ((data.candidates || [])[0]?.content?.parts || []).map(p => p.text).join("");
+    if (!text) throw new Error("The model returned an empty reply — try again.");
+    return text;
+  }
+};
 const TOTAL_SECTIONS = ALL_SECTIONS.length;
 function sectionById(id) { return ALL_SECTIONS.find(s => s.id === id) || null; }
 function sectionDoneIn(p, id) { return !!(p.sections && p.sections[id]); }
@@ -228,6 +314,10 @@ let currentSection = null;
 let currentSectionCode = [];
 /* which chapter overview is open */
 let currentChapter = null;
+/* which faculty test is being taken */
+let currentTestId = null;
+/* in-progress faculty test draft (null = builder closed) */
+let testBuilder = null;
 /* which student row is expanded in a dashboard */
 let expandedStudent = null;
 let openChapter = null;
@@ -991,6 +1081,30 @@ function viewAdmin() {
       </div>
 
       <div class="admin-panel">
+        <h3>Faculty tests &amp; materials <span class="muted">· oversight — publish overrides the review panel</span></h3>
+        ${(() => {
+          const tests = allTests().map(refreshTestStatus);
+          const mats = allMaterials();
+          if (!tests.length && !mats.length) return `<p class="muted">No faculty tests or materials yet.</p>`;
+          return `
+        ${tests.map(t => `
+          <div class="test-row">
+            <div class="test-info"><b>${esc(t.title)}</b><span class="muted">by ${esc(t.authorName)} · ${t.questions.length} questions · ${testMarks(t.id).length} attempts</span></div>
+            ${testStatusChip(t)}
+            <div class="row-actions">
+              ${t.status !== "approved" ? `<button class="mini-btn" data-test-publish="${t.id}">Publish now</button>` : ""}
+              <button class="mini-btn mini-danger" data-test-del="${t.id}">Delete</button>
+            </div>
+          </div>`).join("")}
+        ${mats.map(m => `
+          <div class="test-row">
+            <div class="test-info"><b>${esc(m.title)}</b><span class="muted">material · Chapter ${m.ch} · by ${esc(m.authorName)}</span></div>
+            <div class="row-actions"><button class="mini-btn mini-danger" data-mat-del="${m.id}">Delete</button></div>
+          </div>`).join("")}`;
+        })()}
+      </div>
+
+      <div class="admin-panel">
         <h3>Staff &amp; accounts <span class="muted">· ${staff.length}</span></h3>
         <div class="table-scroll">
           <table class="admin-table">
@@ -1127,6 +1241,31 @@ function viewCourse() {
           </div>`;
         }).join("")}
       </div>
+
+      ${(() => {
+        const live = approvedTests();
+        if (!live.length) return "";
+        return `
+      <div class="tests-block">
+        <h3>${icon("target")} Tests from your faculty <span class="muted">· ${live.length}</span></h3>
+        <div class="tests-grid">
+          ${live.map(t => {
+            const r = testResultFor(p, t.id);
+            return `
+            <div class="test-card">
+              <div class="test-info">
+                <b>${esc(t.title)}</b>
+                <span class="muted">${t.questions.length} question${t.questions.length === 1 ? "" : "s"} · by ${esc(t.authorName)}${t.ch ? " · Chapter " + t.ch : ""}</span>
+              </div>
+              ${r
+                ? `<span class="test-score ${r.score / r.total >= 0.5 ? "good" : ""}">${r.score}/${r.total}</span>
+                   <button class="btn btn-ghost" data-taketest="${t.id}">Review</button>`
+                : `<button class="btn" data-taketest="${t.id}">Take test →</button>`}
+            </div>`;
+          }).join("")}
+        </div>
+      </div>`;
+      })()}
 
       ${(() => {
         const s = studentSummary(p);
@@ -1286,6 +1425,21 @@ function viewChapter(ch) {
             <p class="muted prac-note">Extra ideas to try in the Scratchpad on any lesson.</p>
             <ol class="practice-list">${meta.practice.map(pr => `<li>${esc(pr)}</li>`).join("")}</ol>
           </div>
+          ${(() => {
+            const mats = allMaterials().filter(m => m.ch === ch);
+            if (!mats.length) return "";
+            return `
+          <div class="chap-block mats-block">
+            <h2>${icon("book")} Faculty materials <span class="muted">· added by your teachers</span></h2>
+            ${mats.map(m => `
+              <div class="mat-card">
+                <div class="mat-top"><b>${esc(m.title)}</b><span class="muted">by ${esc(m.authorName)} · ${new Date(m.at).toLocaleDateString()}</span></div>
+                ${m.kind === "link"
+                  ? `<a class="mat-link" href="${esc(m.content)}" target="_blank" rel="noopener">${esc(m.content)} ${icon("external")}</a>`
+                  : `<p class="mat-note">${esc(m.content).replace(/\n/g, "<br>")}</p>`}
+              </div>`).join("")}
+          </div>`;
+          })()}
           ${QUIZ[ch] ? `
           <div class="chap-block quiz-block" style="--accent:${meta.color}">
             <h2>${icon("target")} Check your understanding</h2>
@@ -1396,6 +1550,148 @@ function viewSection(id) {
         ${prev ? `<button class="btn btn-ghost" data-section="${prev}">← Previous</button>` : "<span></span>"}
         ${next ? `<button class="btn" data-section="${next}">Next lesson →</button>` : `<button class="btn" data-nav="course">Finish the course ✓</button>`}
       </div>
+
+      <div class="tutor-dock ${tutorOpen ? "open" : ""}" id="tutorDock">
+        <button class="tutor-head" data-tutor-toggle>
+          <span class="tutor-dot ${Tutor.key() ? "on" : ""}"></span>
+          <b>AI Tutor</b><span class="tutor-sub">personal · your own key</span>
+          <span class="tutor-chev">${tutorOpen ? "▾" : "▴"}</span>
+        </button>
+        <div class="tutor-panel">
+          <div class="tutor-msgs" id="tutorMsgs"></div>
+          <div class="tutor-setup ${Tutor.key() && !tutorSetup ? "out-hidden" : ""}" id="tutorSetup">
+            <p class="muted">The tutor runs on <b>your own free Gemini API key</b> — it stays in this browser and calls Google directly. <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Get a free key ${icon("external")}</a></p>
+            <div class="tutor-setup-row">
+              <input id="tutorKey" type="password" placeholder="Paste your API key" value="${esc(Tutor.key())}">
+              <select id="tutorModel">${Tutor.MODELS.map(m => `<option value="${m}" ${Tutor.model() === m ? "selected" : ""}>${m}</option>`).join("")}</select>
+              <button class="btn" data-tutor-savekey>Save</button>
+            </div>
+          </div>
+          <div class="tutor-input-row">
+            <input id="tutorInput" type="text" placeholder="Ask about this lesson, or your code…" ${tutorBusy ? "disabled" : ""}>
+            <button class="btn btn-run" data-tutor-send ${tutorBusy ? "disabled" : ""}>Ask</button>
+            <button class="tutor-gear" data-tutor-gear title="API key & model">⚙</button>
+          </div>
+        </div>
+      </div>
+    </section>`;
+}
+
+/* Tutor chat state + painter. Messages are DOM-built (textContent), never
+   injected as HTML, so model output can't script the page. */
+let tutorOpen = false, tutorBusy = false, tutorSetup = false, tutorMsgs = [], tutorFor = null;
+
+function tutorContext() {
+  const s = sectionById(currentSection);
+  if (!s) return "You are BridgeUp's friendly Python tutor for first-year students.";
+  const text = s.blocks.map(b => (b.t === "code" ? "```python\n" + b.x + "\n```" : b.x)).join("\n").slice(0, 1600);
+  const code = (document.getElementById("code-hb-sandbox") || {}).value || "";
+  return `You are BridgeUp's friendly Python tutor for first-year students at VIT.
+Be concise (under 150 words), encouraging, and never invent facts.
+Prefer guiding hints over full answers for graded work.
+The student is on the lesson "${s.title}" (Chapter ${s.chapter.ch}: ${s.chapter.title}).
+Lesson excerpt:\n${text}\n${code ? "Student's current Scratchpad code:\n```python\n" + code + "\n```" : ""}`;
+}
+
+function paintTutor() {
+  const box = document.getElementById("tutorMsgs");
+  if (!box) return;
+  if (tutorFor !== currentSection) { tutorMsgs = []; tutorFor = currentSection; }
+  box.innerHTML = "";
+  if (!tutorMsgs.length) {
+    const hint = document.createElement("div");
+    hint.className = "tutor-empty muted";
+    hint.textContent = Tutor.key()
+      ? "Ask anything about this lesson — concepts, errors, or the code in your Scratchpad."
+      : "Add your free API key below to start chatting.";
+    box.appendChild(hint);
+  }
+  tutorMsgs.forEach(m => {
+    const el = document.createElement("div");
+    el.className = "tutor-msg " + (m.role === "user" ? "tm-user" : m.role === "error" ? "tm-error" : "tm-ai");
+    el.textContent = m.text;
+    box.appendChild(el);
+  });
+  if (tutorBusy) {
+    const el = document.createElement("div");
+    el.className = "tutor-msg tm-ai tm-busy";
+    el.textContent = "Thinking…";
+    box.appendChild(el);
+  }
+  box.scrollTop = box.scrollHeight;
+}
+
+async function tutorSend() {
+  const input = document.getElementById("tutorInput");
+  const q = (input && input.value || "").trim();
+  if (!q || tutorBusy) return;
+  if (!Tutor.key()) { tutorSetup = true; document.getElementById("tutorSetup")?.classList.remove("out-hidden"); return; }
+  input.value = "";
+  tutorMsgs.push({ role: "user", text: q });
+  tutorBusy = true; paintTutor();
+  try {
+    const reply = await Tutor.ask(tutorMsgs.filter(m => m.role !== "error").slice(-10), tutorContext());
+    tutorMsgs.push({ role: "ai", text: reply });
+  } catch (e) {
+    tutorMsgs.push({ role: "error", text: "Tutor error: " + (e.message || e) });
+  }
+  tutorBusy = false; paintTutor();
+  document.getElementById("tutorInput")?.focus();
+}
+
+/* ---------- Faculty test: student taking + review ---------- */
+
+function viewTestTake(id) {
+  const t = allTests().map(refreshTestStatus).find(x => x.id === id);
+  if (!t || t.status !== "approved") return viewCourse();
+  const r = testResultFor(store.get(), id);
+
+  if (r) {
+    // already attempted — one attempt per student; show the review
+    return `
+    <section class="test-view">
+      <div class="test-head">
+        <button class="link-back" data-nav="course">← Course</button>
+        <h1>${esc(t.title)}</h1>
+        <p class="muted">By ${esc(t.authorName)} · attempted ${new Date(r.at).toLocaleDateString()} · one attempt per student</p>
+        <div class="test-result-band ${r.score / r.total >= 0.5 ? "trb-good" : ""}">Your score: <b>${r.score}/${r.total}</b> (${Math.round(r.score / r.total * 100)}%)</div>
+      </div>
+      ${t.questions.map((q, i) => {
+        const mine = (r.answers || {})[i];
+        return `
+        <div class="tq-card tq-review">
+          <p class="tq-text"><span class="tq-n">Q${i + 1}</span>${esc(q.q)}</p>
+          ${q.opts.map((o, oi) => o.trim() ? `
+            <div class="tq-opt ${oi === q.ans ? "tq-correct" : ""} ${mine === oi && oi !== q.ans ? "tq-wrong" : ""}">
+              <span class="qo-key">${String.fromCharCode(65 + oi)}</span> ${esc(o)}
+              ${oi === q.ans ? `<span class="tq-flag">Correct answer</span>` : mine === oi ? `<span class="tq-flag">Your answer</span>` : ""}
+            </div>` : "").join("")}
+        </div>`;
+      }).join("")}
+      <div class="lesson-foot"><span></span><button class="btn" data-nav="course">Back to course →</button></div>
+    </section>`;
+  }
+
+  return `
+    <section class="test-view">
+      <div class="test-head">
+        <button class="link-back" data-nav="course">← Course</button>
+        <h1>${esc(t.title)}</h1>
+        <p class="muted">${t.questions.length} questions · 1 mark each · one attempt — answers lock when you submit.</p>
+      </div>
+      ${t.questions.map((q, i) => `
+        <div class="tq-card">
+          <p class="tq-text"><span class="tq-n">Q${i + 1}</span>${esc(q.q)}</p>
+          ${q.opts.map((o, oi) => o.trim() ? `
+            <label class="tq-opt tq-pick">
+              <input type="radio" name="tq-${i}" value="${oi}">
+              <span class="qo-key">${String.fromCharCode(65 + oi)}</span> ${esc(o)}
+            </label>` : "").join("")}
+        </div>`).join("")}
+      <div class="test-submit-row">
+        <span class="muted" id="testWarn"></span>
+        <button class="btn btn-finish btn-lg" data-test-finish="${t.id}">Submit test</button>
+      </div>
     </section>`;
 }
 
@@ -1453,7 +1749,141 @@ function viewFaculty() {
           ${HANDBOOK.map(c => { const m = CH_META[c.ch]; return `<button class="res-btn" data-pdf="${c.ch}" style="--accent:${m.color}"><span class="res-ic">${icon(m.icon)}</span><span><b>Chapter ${c.ch}</b><span class="muted">${esc(c.title)}</span></span>${icon("download")}</button>`; }).join("")}
         </div>
       </div>
+
+      ${facultyTestPanels(u)}
+      ${facultyMaterialPanel(u)}
     </section>`;
+}
+
+/* ---------- Faculty: create tests, review peers' tests, see marks ---------- */
+
+function testStatusChip(t) {
+  const s = TEST_STATUS[t.status] || TEST_STATUS.draft;
+  const votes = t.status === "pending" ? ` ${(t.approvals || []).length}/${approvalsNeededFor(t)} approvals` : "";
+  return `<span class="ts-chip ${s.cls}">${s.label}${votes}</span>`;
+}
+
+function facultyTestPanels(u) {
+  const tests = allTests().map(refreshTestStatus);
+  const mine = tests.filter(t => t.author === u.email);
+  const queue = tests.filter(t => t.status === "pending" && t.author !== u.email);
+  const live = tests.filter(t => t.status === "approved");
+
+  const builder = testBuilder ? `
+    <div class="tb-form" id="tbForm">
+      <div class="tb-row">
+        <label>Test title <input id="tb-title" type="text" placeholder="e.g. Unit test 1 — Basics & control flow" value="${esc(testBuilder.title || "")}"></label>
+        <label>Chapter (optional)
+          <select id="tb-ch">
+            <option value="0" ${!testBuilder.ch ? "selected" : ""}>General</option>
+            ${HANDBOOK.map(c => `<option value="${c.ch}" ${testBuilder.ch === c.ch ? "selected" : ""}>Chapter ${c.ch} — ${esc(c.title)}</option>`).join("")}
+          </select>
+        </label>
+      </div>
+      ${testBuilder.questions.map((q, i) => `
+        <div class="tb-q" data-qi="${i}">
+          <div class="tb-q-head"><b>Question ${i + 1}</b>${testBuilder.questions.length > 1 ? `<button class="mini-btn mini-danger" data-tb-delq="${i}">Remove</button>` : ""}</div>
+          <input class="tb-qtext" type="text" placeholder="The question…" value="${esc(q.q || "")}">
+          <div class="tb-opts">
+            ${[0, 1, 2, 3].map(oi => `<input class="tb-opt" type="text" placeholder="Option ${String.fromCharCode(65 + oi)}" value="${esc((q.opts || [])[oi] || "")}">`).join("")}
+          </div>
+          <label class="tb-anslabel">Correct answer
+            <select class="tb-ans">${[0, 1, 2, 3].map(oi => `<option value="${oi}" ${q.ans === oi ? "selected" : ""}>${String.fromCharCode(65 + oi)}</option>`).join("")}</select>
+          </label>
+        </div>`).join("")}
+      <div class="tb-actions">
+        <button class="btn btn-ghost" data-tb-addq>+ Add question</button>
+        <span class="tb-spacer"></span>
+        <button class="btn btn-ghost" data-tb-cancel>Cancel</button>
+        <button class="btn" data-tb-save>Save draft</button>
+        <button class="btn btn-finish" data-tb-submit>Submit for review →</button>
+      </div>
+      <p class="muted tb-note" id="tbWarn"></p>
+    </div>` : "";
+
+  return `
+      <div class="admin-panel fac-tests">
+        <h3>Assessments <span class="muted">· create tests — a faculty panel of up to 5 reviews each one; majority approval publishes it</span></h3>
+        ${builder || `<button class="btn" data-tb-new>+ Create a test</button>`}
+        ${mine.length ? `
+        <div class="test-list">
+          ${mine.map(t => `
+            <div class="test-row">
+              <div class="test-info"><b>${esc(t.title)}</b><span class="muted">${t.questions.length} questions${t.ch ? " · Chapter " + t.ch : ""}</span></div>
+              ${testStatusChip(t)}
+              <div class="row-actions">
+                ${t.status === "draft" ? `<button class="mini-btn" data-test-submit="${t.id}">Submit for review</button>` : ""}
+                ${t.status !== "approved" ? `<button class="mini-btn mini-danger" data-test-del="${t.id}">Delete</button>` : ""}
+              </div>
+            </div>`).join("")}
+        </div>` : ""}
+      </div>
+
+      <div class="admin-panel">
+        <h3>Review queue <span class="muted">· tests from other faculty awaiting your decision</span></h3>
+        ${queue.length ? queue.map(t => {
+          const voted = (t.approvals || []).includes(u.email) || (t.rejections || []).some(r => r.email === u.email);
+          return `
+          <div class="review-card">
+            <div class="test-info">
+              <b>${esc(t.title)}</b>
+              <span class="muted">by ${esc(t.authorName)} · ${t.questions.length} questions${t.ch ? " · Chapter " + t.ch : ""} · needs ${approvalsNeededFor(t)} approval${approvalsNeededFor(t) === 1 ? "" : "s"}</span>
+            </div>
+            ${testStatusChip(t)}
+            <details class="review-peek"><summary>View questions</summary>
+              <ol>${t.questions.map(q => `<li>${esc(q.q)} <span class="muted">(answer: ${String.fromCharCode(65 + q.ans)}. ${esc(q.opts[q.ans] || "")})</span></li>`).join("")}</ol>
+            </details>
+            ${voted ? `<span class="muted">You've voted on this test.</span>` : `
+            <div class="row-actions">
+              <button class="mini-btn" data-test-approve="${t.id}">Approve</button>
+              <button class="mini-btn mini-danger" data-test-reject="${t.id}">Reject</button>
+            </div>`}
+          </div>`;
+        }).join("") : `<p class="muted">Nothing waiting for review.</p>`}
+      </div>
+
+      <div class="admin-panel">
+        <h3>Test marks <span class="muted">· results across the class</span></h3>
+        ${live.length ? live.map(t => {
+          const rowsM = testMarks(t.id);
+          const totalStu = Auth.allAccounts().filter(a => a.role === "student").length;
+          const avg = rowsM.length ? Math.round(rowsM.reduce((s, r) => s + r.score / r.total, 0) / rowsM.length * 100) : 0;
+          return `
+          <div class="marks-group">
+            <div class="marks-head"><b>${esc(t.title)}</b><span class="muted">${rowsM.length}/${totalStu} attempted${rowsM.length ? ` · class average ${avg}%` : ""}</span></div>
+            ${rowsM.length ? `
+            <div class="table-scroll"><table class="admin-table marks-table">
+              <thead><tr><th>Student</th><th>Email</th><th class="ctr">Marks</th><th class="ctr">%</th></tr></thead>
+              <tbody>${rowsM.map(r => `<tr><td>${esc(r.name)}</td><td class="mono">${esc(r.email)}</td><td class="ctr cell-frac">${r.score}<span>/${r.total}</span></td><td class="ctr">${Math.round(r.score / r.total * 100)}%</td></tr>`).join("")}</tbody>
+            </table></div>` : `<p class="muted">No attempts yet.</p>`}
+          </div>`;
+        }).join("") : `<p class="muted">No live tests yet — create one above and get it approved.</p>`}
+      </div>`;
+}
+
+function facultyMaterialPanel(u) {
+  const mine = allMaterials().filter(m => m.author === u.email);
+  return `
+      <div class="admin-panel">
+        <h3>Course materials <span class="muted">· add notes or links that appear inside chapters for every student</span></h3>
+        <div class="mat-form">
+          <div class="tb-row">
+            <label>Chapter <select id="mat-ch">${HANDBOOK.map(c => `<option value="${c.ch}">Chapter ${c.ch} — ${esc(c.title)}</option>`).join("")}</select></label>
+            <label>Type <select id="mat-kind"><option value="note">Note</option><option value="link">Link</option></select></label>
+          </div>
+          <label>Title <input id="mat-title" type="text" placeholder="e.g. Extra examples on loops"></label>
+          <label>Content <textarea id="mat-content" rows="3" placeholder="The note text, or a URL for links"></textarea></label>
+          <div class="tb-actions"><span class="muted" id="matWarn"></span><span class="tb-spacer"></span><button class="btn" data-mat-add>Add material</button></div>
+        </div>
+        ${mine.length ? `
+        <div class="test-list">
+          ${mine.map(m => `
+            <div class="test-row">
+              <div class="test-info"><b>${esc(m.title)}</b><span class="muted">Chapter ${m.ch} · ${m.kind} · ${new Date(m.at).toLocaleDateString()}</span></div>
+              <div class="row-actions"><button class="mini-btn mini-danger" data-mat-del="${m.id}">Delete</button></div>
+            </div>`).join("")}
+        </div>` : ""}
+      </div>`;
 }
 
 /* ---------- Router ---------- */
@@ -1466,6 +1896,7 @@ const views = {
   course: viewCourse,
   section: () => viewSection(currentSection),
   chapter: () => viewChapter(currentChapter),
+  test: () => viewTestTake(currentTestId),
   faculty: viewFaculty,
   admin: viewAdmin
 };
@@ -1504,6 +1935,7 @@ function render(route) {
     document.querySelectorAll(".nav-links a").forEach(a =>
       a.classList.toggle("active", a.dataset.nav === route));
     if (route === "home") requestAnimationFrame(animateCounters);
+    if (route === "section") requestAnimationFrame(paintTutor);
   };
   // Real navigation jumps to the top; an in-place update (accordion, checklist
   // tick, quiz reset, admin role change, student drill-down) keeps your spot.
@@ -1699,6 +2131,155 @@ document.addEventListener("click", (e) => {
     return;
   }
 
+  /* ---------- faculty tests: student side ---------- */
+  const takeBtn = e.target.closest("[data-taketest]");
+  if (takeBtn) { currentTestId = takeBtn.dataset.taketest; render("test"); return; }
+
+  const finishBtn = e.target.closest("[data-test-finish]");
+  if (finishBtn) {
+    const t = allTests().find(x => x.id === finishBtn.dataset.testFinish);
+    if (!t) return;
+    const answers = {};
+    let unanswered = 0;
+    t.questions.forEach((q, i) => {
+      const pick = document.querySelector(`input[name="tq-${i}"]:checked`);
+      if (pick) answers[i] = Number(pick.value); else unanswered++;
+    });
+    if (unanswered && !confirm(`${unanswered} question${unanswered === 1 ? " is" : "s are"} unanswered and will score 0. Submit anyway?`)) return;
+    const score = t.questions.reduce((s, q, i) => s + (answers[i] === q.ans ? 1 : 0), 0);
+    const tests = { ...(store.get().tests || {}) };
+    tests[t.id] = { score, total: t.questions.length, at: Date.now(), answers };
+    store.set({ tests });
+    render("test");
+    return;
+  }
+
+  /* ---------- faculty tests: authoring ---------- */
+  const readBuilder = () => {
+    if (!testBuilder) return;
+    testBuilder.title = (document.getElementById("tb-title") || {}).value || "";
+    testBuilder.ch = Number((document.getElementById("tb-ch") || {}).value || 0);
+    testBuilder.questions = [...document.querySelectorAll(".tb-q")].map(el => ({
+      q: el.querySelector(".tb-qtext").value,
+      opts: [...el.querySelectorAll(".tb-opt")].map(i => i.value),
+      ans: Number(el.querySelector(".tb-ans").value)
+    }));
+  };
+  const builderValid = () => {
+    if (!testBuilder.title.trim()) return "Give the test a title.";
+    for (let i = 0; i < testBuilder.questions.length; i++) {
+      const q = testBuilder.questions[i];
+      if (!q.q.trim()) return `Question ${i + 1} is empty.`;
+      if (q.opts.filter(o => o.trim()).length < 2) return `Question ${i + 1} needs at least two options.`;
+      if (!q.opts[q.ans] || !q.opts[q.ans].trim()) return `Question ${i + 1}: the correct answer points at an empty option.`;
+    }
+    return null;
+  };
+  const saveBuilder = (status) => {
+    readBuilder();
+    const err = builderValid();
+    if (err) { const w = document.getElementById("tbWarn"); if (w) w.textContent = err; return false; }
+    const u = Auth.currentUser();
+    const tests = allTests();
+    const existing = testBuilder.id && tests.find(x => x.id === testBuilder.id);
+    const t = existing || { id: uid(), author: u.email, authorName: u.name, at: Date.now(), approvals: [], rejections: [] };
+    Object.assign(t, { title: testBuilder.title.trim(), ch: testBuilder.ch, questions: testBuilder.questions, status });
+    if (status === "pending") { t.approvals = []; t.rejections = []; refreshTestStatus(t); }
+    if (!existing) tests.push(t);
+    saveTests(tests);
+    testBuilder = null;
+    render("faculty");
+    return true;
+  };
+
+  if (e.target.closest("[data-tb-new]")) { testBuilder = { title: "", ch: 0, questions: [{ q: "", opts: ["", "", "", ""], ans: 0 }] }; render("faculty"); return; }
+  if (e.target.closest("[data-tb-addq]")) { readBuilder(); testBuilder.questions.push({ q: "", opts: ["", "", "", ""], ans: 0 }); render("faculty"); return; }
+  const delQ = e.target.closest("[data-tb-delq]");
+  if (delQ) { readBuilder(); testBuilder.questions.splice(Number(delQ.dataset.tbDelq), 1); render("faculty"); return; }
+  if (e.target.closest("[data-tb-cancel]")) { testBuilder = null; render("faculty"); return; }
+  if (e.target.closest("[data-tb-save]")) { saveBuilder("draft"); return; }
+  if (e.target.closest("[data-tb-submit]")) { saveBuilder("pending"); return; }
+
+  const submitT = e.target.closest("[data-test-submit]");
+  if (submitT) { updateTest(submitT.dataset.testSubmit, t => { t.status = "pending"; t.approvals = []; t.rejections = []; }); render("faculty"); return; }
+
+  const delT = e.target.closest("[data-test-del]");
+  if (delT) {
+    const t = allTests().find(x => x.id === delT.dataset.testDel);
+    if (t && confirm(`Delete the test "${t.title}"? Student marks for it are kept but the test disappears.`)) {
+      saveTests(allTests().filter(x => x.id !== t.id));
+      render(Auth.isAdmin() ? "admin" : "faculty");
+    }
+    return;
+  }
+
+  /* ---------- faculty tests: review panel ---------- */
+  const approveT = e.target.closest("[data-test-approve]");
+  if (approveT) {
+    const me = Auth.currentUser().email;
+    updateTest(approveT.dataset.testApprove, t => { if (!t.approvals.includes(me) && t.author !== me) t.approvals.push(me); });
+    render("faculty");
+    return;
+  }
+  const rejectT = e.target.closest("[data-test-reject]");
+  if (rejectT) {
+    const reason = prompt("Why should this test not go live? (shared with the author)");
+    if (reason === null) return;
+    const me = Auth.currentUser().email;
+    updateTest(rejectT.dataset.testReject, t => { if (!t.rejections.some(r => r.email === me) && t.author !== me) t.rejections.push({ email: me, reason }); });
+    render("faculty");
+    return;
+  }
+  const publishT = e.target.closest("[data-test-publish]");
+  if (publishT && Auth.isAdmin()) { updateTest(publishT.dataset.testPublish, t => { t.status = "approved"; }); render("admin"); return; }
+
+  /* ---------- faculty materials ---------- */
+  if (e.target.closest("[data-mat-add]")) {
+    const title = (document.getElementById("mat-title") || {}).value || "";
+    const content = (document.getElementById("mat-content") || {}).value || "";
+    const warn = document.getElementById("matWarn");
+    if (!title.trim() || !content.trim()) { if (warn) warn.textContent = "Both a title and content are needed."; return; }
+    const u = Auth.currentUser();
+    const mats = allMaterials();
+    mats.push({
+      id: uid(), ch: Number(document.getElementById("mat-ch").value),
+      kind: document.getElementById("mat-kind").value,
+      title: title.trim(), content: content.trim(),
+      author: u.email, authorName: u.name, at: Date.now()
+    });
+    saveMaterials(mats);
+    render("faculty");
+    return;
+  }
+  const delM = e.target.closest("[data-mat-del]");
+  if (delM) {
+    saveMaterials(allMaterials().filter(m => m.id !== delM.dataset.matDel));
+    render(Auth.isAdmin() ? "admin" : "faculty");
+    return;
+  }
+
+  /* ---------- AI tutor ---------- */
+  if (e.target.closest("[data-tutor-toggle]")) {
+    tutorOpen = !tutorOpen;
+    document.getElementById("tutorDock")?.classList.toggle("open", tutorOpen);
+    if (tutorOpen) { paintTutor(); document.getElementById("tutorInput")?.focus(); }
+    return;
+  }
+  if (e.target.closest("[data-tutor-gear]")) {
+    tutorSetup = !tutorSetup;
+    document.getElementById("tutorSetup")?.classList.toggle("out-hidden", !tutorSetup && !!Tutor.key());
+    return;
+  }
+  if (e.target.closest("[data-tutor-savekey]")) {
+    Tutor.save((document.getElementById("tutorKey") || {}).value || "", (document.getElementById("tutorModel") || {}).value);
+    tutorSetup = false;
+    document.getElementById("tutorSetup")?.classList.toggle("out-hidden", !!Tutor.key());
+    document.querySelector(".tutor-dot")?.classList.toggle("on", !!Tutor.key());
+    paintTutor();
+    return;
+  }
+  if (e.target.closest("[data-tutor-send]")) { tutorSend(); return; }
+
   // run a code editor
   const runBtn = e.target.closest("[data-run]");
   if (runBtn) { runEditor(runBtn.dataset.run, runBtn); return; }
@@ -1745,6 +2326,7 @@ document.addEventListener("change", (e) => {
 
 /* Tab inserts spaces inside a code editor instead of leaving it */
 document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target.id === "tutorInput") { e.preventDefault(); tutorSend(); return; }
   if (e.key === "Tab" && e.target.classList && e.target.classList.contains("code-input")) {
     e.preventDefault();
     const ta = e.target, s = ta.selectionStart, en = ta.selectionEnd;
@@ -1777,6 +2359,7 @@ document.addEventListener("keydown", (e) => {
    account that already exists, so admin edits/deletes/resets stick. ---------- */
 const DEMO_SEED = [
   { email: "rao@vit.ac.in", name: "Dr. Meera Rao", role: "faculty", pw: "teach123" },
+  { email: "iyer@vit.ac.in", name: "Dr. Arun Iyer", role: "faculty", pw: "teach123" },
   { email: "swagata@vitstudent.ac.in", name: "Swagata Banerjee", role: "student", pw: "python123",
     prog: { score: 9, sec: { 1: "all", 2: "all", 3: "all", 4: 3 }, quiz: [1, 2, 3], chal: [1, 2, 3], practice: [1, 2, 3] } },
   { email: "aisha@vitstudent.ac.in", name: "Aisha Khan", role: "student", pw: "python123",
@@ -1788,7 +2371,8 @@ const DEMO_SEED = [
 ];
 
 async function seedDemo() {
-  if (localStorage.getItem("bridgeup_demo_seeded")) return;   // once per browser
+  const SEED_V = "2";   // bump to reseed newly-added demo accounts (never clobbers existing ones)
+  if (localStorage.getItem("bridgeup_demo_seeded") === SEED_V) return;
   const accounts = JSON.parse(localStorage.getItem(Auth.accountsKey) || "{}");
   for (const d of DEMO_SEED) {
     const email = d.email.toLowerCase();
@@ -1808,7 +2392,7 @@ async function seedDemo() {
       JSON.stringify({ score: d.prog.score, sections, quiz, challenges, practice }));
   }
   localStorage.setItem(Auth.accountsKey, JSON.stringify(accounts));
-  localStorage.setItem("bridgeup_demo_seeded", "1");
+  localStorage.setItem("bridgeup_demo_seeded", SEED_V);
 }
 
 /* ---------- Boot: seed admin + demo data, then gate on auth ---------- */

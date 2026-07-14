@@ -1293,50 +1293,6 @@ a, .link-inline, .link-back { transition: color .15s, opacity .15s; }
 .theme-toggle:hover { color: var(--ink); border-color: var(--blue); }
 .theme-toggle svg { width: 18px; height: 18px; }
 
-html.light {
-  color-scheme: light;
-  --bg: #f3f5fa;
-  --bg-soft: #e9edf5;
-  --panel: #ffffff;
-  --panel-2: #f7f9fd;
-  --ink: #101828;
-  --ink-soft: #3b4a63;
-  --muted: #64748b;
-  --line: #d8e0ec;
-  --shadow: 0 20px 45px -22px rgba(30, 50, 90, .25);
-}
-
-/* surfaces that hard-code the dark ground */
-html.light .nav { background: rgba(255,255,255,.8); }
-html.light .hero-badge { background: rgba(16,24,40,.05); }
-html.light body { background:
-  radial-gradient(1200px 600px at 80% -10%, rgba(59,130,246,.10), transparent 60%),
-  radial-gradient(900px 500px at 0% 10%, rgba(20,184,166,.08), transparent 55%),
-  var(--bg); }
-html.light body::before { opacity: .5; }
-
-/* light scrollbars */
-html.light * { scrollbar-color: #b9c4d8 transparent; }
-html.light ::-webkit-scrollbar-thumb { background: #b9c4d8; background-clip: padding-box; }
-html.light ::-webkit-scrollbar-thumb:hover { background: #93a3c0; background-clip: padding-box; }
-
-/* soft tinted chips/bands that assumed a dark ground */
-html.light .ck-complete { color: #0d7a6c; }
-html.light .adv-tag { color: #6d28d9; background: rgba(139,92,246,.1); }
-html.light .bonus-tag { color: #b45309; background: rgba(245,158,11,.12); }
-html.light .ts-pending { color: #b45309; }
-html.light .ts-live { color: #0d7a6c; }
-html.light .ts-rejected { color: #be123c; }
-html.light .tq-flag { color: #64748b; }
-html.light .tq-correct .tq-flag { color: #0d7a6c; }
-html.light .tq-wrong .tq-flag { color: #be123c; }
-html.light .tm-error { color: #be123c; }
-html.light .tb-note { color: #be123c; }
-html.light .chal-prompt code { background: #eef2f9; color: #1e3a8a; border-color: var(--line); }
-html.light .tutor-head { background: linear-gradient(90deg, rgba(59,130,246,.1), rgba(20,184,166,.08)); }
-
-/* keep the login showcase, code editor, outputs and terminal dark on light theme —
-   they define their own dark grounds and stay readable as-is. */
 
 /* course gate — take the proficiency test before the course opens */
 .course-gate { display: grid; place-items: center; min-height: 55vh; }
@@ -1348,10 +1304,74 @@ html.light .tutor-head { background: linear-gradient(90deg, rgba(59,130,246,.1),
 .gate-note { margin-top: 16px; font-size: 12.5px; display: flex; align-items: center; justify-content: center; gap: 6px; }
 .gate-note svg { width: 13px; height: 13px; }
 
-/* light theme: translucent dark cards get a light glass equivalent */
+/* ============================================================
+   LIGHT THEME — html.light (persisted per browser).
+   A real palette, not an inversion: cool paper ground, solid
+   white cards, deepened accents that hold AA contrast on white.
+   Code surfaces (editor, outputs, terminal, hero mock) stay
+   dark on purpose — readable islands "where code lives".
+   ============================================================ */
+html.light {
+  color-scheme: light;
+  /* ground */
+  --bg: #f6f8fc;
+  --bg-soft: #edf1f8;
+  --panel: #ffffff;
+  --panel-2: #f9fbfe;
+  --line: #e1e7f0;
+  /* ink */
+  --ink: #0f1a2e;
+  --ink-soft: #3e4e6a;
+  --muted: #68788f;
+  /* accents — deepened so colored text passes contrast on white */
+  --blue: #2458d6;
+  --teal: #0b8f7f;
+  --violet: #6d3fd4;
+  --amber: #b45309;
+  --shadow: 0 18px 40px -24px rgba(23, 42, 84, .25);
+}
+
+/* ground: quiet tints, no blurred aurora on paper */
+html.light body {
+  background:
+    radial-gradient(1100px 520px at 82% -12%, rgba(37, 88, 214, .07), transparent 60%),
+    radial-gradient(900px 460px at -4% 8%, rgba(11, 143, 127, .06), transparent 55%),
+    var(--bg);
+}
+html.light body::before { display: none; }
+html.light .nav { background: rgba(255,255,255,.85); }
+html.light .hero-badge { background: rgba(15,26,46,.05); }
+
+/* solid cards where dark mode used translucent glass */
 html.light .chap-card,
 html.light .stat-cell,
 html.light .step,
 html.light .why-item,
-html.light .tcard { background: rgba(255,255,255,.78); }
-html.light .code-window { background: #0e1830; }   /* hero code mock stays a dark island */
+html.light .tcard { background: var(--panel); box-shadow: 0 6px 22px -14px rgba(23,42,84,.18); }
+
+/* dark islands preserved */
+html.light .code-window { background: #0e1830; }
+html.light .float-card { background: rgba(19,29,51,.92); color: #e8edf7; }
+html.light .float-card .fc-text span { color: #9fb0cc; }
+
+/* scrollbars */
+html.light * { scrollbar-color: #bcc7da transparent; }
+html.light ::-webkit-scrollbar-thumb { background: #bcc7da; background-clip: padding-box; }
+html.light ::-webkit-scrollbar-thumb:hover { background: #94a4c0; background-clip: padding-box; }
+
+/* chips, tags & status colors tuned for white */
+html.light .adv-tag { color: #6d28d9; background: rgba(109,63,212,.09); border-color: rgba(109,63,212,.35); }
+html.light .bonus-tag { color: #a16207; background: rgba(180,83,9,.1); border-color: rgba(180,83,9,.35); }
+html.light .ts-pending { color: #a16207; background: rgba(180,83,9,.1); }
+html.light .ts-live { color: #0b6e62; background: rgba(11,143,127,.1); }
+html.light .ts-rejected { color: #be123c; background: rgba(190,18,60,.08); }
+html.light .ck-complete { color: #0b6e62; background: rgba(11,143,127,.08); }
+html.light .chal-solved, html.light .cs-yes { color: #0b6e62; }
+html.light .tq-flag { color: var(--muted); }
+html.light .tq-correct .tq-flag { color: #0b6e62; }
+html.light .tq-wrong .tq-flag, html.light .tm-error, html.light .tb-note { color: #be123c; }
+html.light .chal-prompt code { background: #eef2f9; color: #1e3a8a; border-color: var(--line); }
+html.light .tutor-head { background: linear-gradient(90deg, rgba(37,88,214,.08), rgba(11,143,127,.07)); }
+html.light .test-result-band { background: rgba(190,18,60,.07); border-color: rgba(190,18,60,.3); }
+html.light .test-result-band.trb-good { background: rgba(11,143,127,.08); border-color: rgba(11,143,127,.35); }
+html.light .sec-done-badge { color: #0b6e62; }

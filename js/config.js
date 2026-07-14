@@ -14,7 +14,7 @@
    ============================================================ */
 
 window.BRIDGEUP_CONFIG = {
-  supabaseUrl: "",        // e.g. "https://abcdefgh.supabase.co"
-  supabaseAnonKey: "",    // the long "anon / public" key
+  supabaseUrl: "oarejgsgvoynanuriyjt",        // e.g. "https://abcdefgh.supabase.co"
+  supabaseAnonKey: "ap-southeast-2",    // the long "anon / public" key
   adminEmail: "theswagata1@gmail.com"   // this account signs in as admin
 };

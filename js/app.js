@@ -1483,12 +1483,6 @@ function viewChapter(ch) {
             <h3>${icon("bulb")} Key takeaways</h3>
             <ul class="take-list">${meta.takeaways.map(t => `<li>${esc(t)}</li>`).join("")}</ul>
           </div>
-          ${CH_DOCS[ch] ? `
-          <a class="side-card docs-card" href="${CH_DOCS[ch].url}" target="_blank" rel="noopener">
-            <h3>${icon("book")} Official docs</h3>
-            <p class="muted">Go deeper with the authoritative Python Tutorial:</p>
-            <span class="docs-link">${esc(CH_DOCS[ch].title)} ${icon("external")}</span>
-          </a>` : ""}
           <button class="btn btn-lg chap-cta" data-section="${startId}">${cDone ? "Continue chapter →" : "Start Chapter " + ch + " →"}</button>
           <button class="btn btn-ghost chap-pdf-cta" data-pdf="${ch}">${icon("download")} Download chapter PDF</button>
         </aside>

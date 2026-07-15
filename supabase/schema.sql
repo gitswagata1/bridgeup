@@ -77,6 +77,17 @@ create table if not exists public.materials (
   created_at timestamptz not null default now()
 );
 
+-- ---------- federated adaptive model (aggregate only — no student data) ----------
+-- One row per module holds a running difficulty estimate and a sample count.
+-- Devices contribute derived estimates via contribute_adaptive(); raw learning
+-- events and identities are never written here.
+create table if not exists public.global_model (
+  module_id   text primary key,
+  difficulty  real not null default 0.3,
+  samples     real not null default 0,
+  updated_at  timestamptz not null default now()
+);
+
 -- ---------- test results (one attempt per student per test) ----------
 create table if not exists public.test_results (
   test_id  uuid not null references public.tests(id) on delete cascade,
@@ -96,6 +107,13 @@ alter table public.progress     enable row level security;
 alter table public.tests        enable row level security;
 alter table public.materials    enable row level security;
 alter table public.test_results enable row level security;
+alter table public.global_model  enable row level security;
+
+-- global_model: the aggregate is readable by everyone (it identifies no one);
+-- writes happen only through the contribute_adaptive() RPC below.
+drop policy if exists gm_read on public.global_model;
+create policy gm_read on public.global_model
+  for select to authenticated using (true);
 
 -- profiles: any signed-in user can read (dashboards, review-panel counts);
 -- all writes go through security-definer RPCs below.
@@ -224,6 +242,32 @@ end $$;
 alter table public.materials drop constraint if exists materials_kind_check;
 alter table public.materials add constraint materials_kind_check check (kind in ('note','link','pdf'));
 
+-- Federated averaging (FedAvg analogue), enforced server-side. The client sends
+-- only { module_id: {est, w} } — derived estimates and bounded weights, never
+-- raw events or identity. Each module's difficulty becomes the weight-averaged
+-- blend of its prior value and the incoming estimate.
+create or replace function public.contribute_adaptive(p_update jsonb)
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  k text; est real; w real; g record;
+begin
+  for k in select jsonb_object_keys(p_update) loop
+    est := greatest(0, least(1, (p_update->k->>'est')::real));
+    w   := greatest(0, least(5, (p_update->k->>'w')::real));   -- clip contribution weight
+    if w <= 0 then continue; end if;
+    select * into g from global_model where module_id = k for update;
+    if g is null then
+      insert into global_model(module_id, difficulty, samples) values (k, est, w);
+    else
+      update global_model
+        set difficulty = (g.difficulty * g.samples + est * w) / (g.samples + w),
+            samples = g.samples + w, updated_at = now()
+        where module_id = k;
+    end if;
+  end loop;
+end $$;
+
+grant execute on function public.contribute_adaptive(jsonb) to authenticated;
 grant execute on function public.vote_test(uuid, boolean, text) to authenticated;
 grant execute on function public.set_role(uuid, text) to authenticated;
 grant execute on function public.admin_reset_progress(uuid) to authenticated;

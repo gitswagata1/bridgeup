@@ -46,6 +46,7 @@ It's a single-page app in plain HTML, CSS, and JavaScript — **no framework, no
 - **Marks for faculty.** Every test's results roll into the faculty dashboard — per-student marks, attempt counts, and class averages.
 - **Faculty materials.** Faculty add notes, links, or **uploaded PDFs** (up to 2.5 MB) to any chapter; they appear inside the chapter for every student. Admin has oversight of both tests and materials.
 - **Personal AI tutor.** A lesson-aware chat tutor on every lesson page, powered by **each user's own free Gemini API key** — the key lives only in their browser and calls Google directly; BridgeUp never sees it.
+- **Federated Adaptive Learning** *(research / patent PoC).* A privacy-preserving adaptive engine: struggle signals are captured **on-device**, and only anonymised, differentially-private difficulty estimates are aggregated (FedAvg-style) into a shared model — so personalisation improves across all learners while **no raw student data ever leaves the browser**. Powers the "recommended next module" card, a "commonly challenging" signal, and the tutor's memory. See [docs/PATENT-DISCLOSURE.md](docs/PATENT-DISCLOSURE.md).
 - **Three roles, one login.**
   - **Student** — takes the course and faculty tests, tracks progress, downloads chapter PDFs.
   - **Faculty** — class analytics and marks, plus authoring: tests (peer-reviewed) and chapter materials.
@@ -165,12 +166,14 @@ bridgeup/
 │   ├── handbook.js     # Course content: 8 chapters / 99 lessons (official Python Tutorial)
 │   ├── runner.js       # In-browser Python via Pyodide (stdin, loop guard, REPL echo)
 │   ├── pdf.js          # Chapter study guides + completion certificate (jsPDF)
+│   ├── adaptive.js     # Federated Adaptive Learning engine (on-device signals, FedAvg, DP, memory)
 │   └── app.js          # Views, routing, progress, quizzes, challenges, gamification, dashboards, demo seed
 ├── docs/
 │   └── banner.svg
 ├── supabase/
 │   └── schema.sql      # Campus-mode database: tables, RLS, approval RPCs
 ├── SETUP-CLOUD.md      # 5-minute campus deployment guide
+├── docs/PATENT-DISCLOSURE.md  # Technical disclosure: Federated Adaptive Learning
 ├── package.json
 ├── LICENSE
 └── README.md
@@ -209,6 +212,7 @@ In **local demo mode**, accounts and progress live in each visitor's own browser
 - **Scale** — ✅ shipped: campus mode with a real cohort database (Supabase). Next: VIT SSO sign-in and section management.
 - **Beyond Python** — C and Java tracks to match first-year curricula.
 - **Assessment** — proctored test modes and LMS integration so progress flows into existing systems.
+- **Federated Adaptive Learning** — ✅ working PoC + patent disclosure; next: formal (ε, δ)-DP guarantees, secure aggregation, prior-art search with the VIT IP cell.
 
 ---
 

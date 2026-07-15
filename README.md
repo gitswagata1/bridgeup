@@ -8,11 +8,11 @@
   <img src="https://img.shields.io/badge/Python-Pyodide-3776ab?logo=python&logoColor=white" alt="Python via Pyodide">
   <img src="https://img.shields.io/badge/dependencies-0-brightgreen" alt="Zero dependencies">
   <a href="https://github.com/gitswagata1/bridgeup/actions/workflows/ci.yml"><img src="https://github.com/gitswagata1/bridgeup/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://gitswagata1.github.io/bridgeup/"><img src="https://img.shields.io/badge/demo-live-14b8a6" alt="Live demo"></a>
+  <a href="https://gitswagata1.github.io/bridgeup/?demo=1"><img src="https://img.shields.io/badge/demo-live-14b8a6" alt="Live demo"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue" alt="MIT License"></a>
 </p>
 
-<h3 align="center">🔗 <a href="https://gitswagata1.github.io/bridgeup/">Live demo — gitswagata1.github.io/bridgeup</a></h3>
+<h3 align="center">🔗 <a href="https://gitswagata1.github.io/bridgeup/?demo=1">Try the live demo — one tap, no signup</a></h3>
 
 **BridgeUp** is a Python learning platform for first-year students, built around one observation: every classroom has a hundred different starting lines. It begins with a short **coding proficiency test**, places each learner into **Beginner, Intermediate, or Advanced**, and then teaches through an interactive course where **real Python runs in the browser** — no installs, no setup, no lab configuration.
 
@@ -44,7 +44,7 @@ It's a single-page app in plain HTML, CSS, and JavaScript — **no framework, no
 - **Completion that means something.** A chapter closes only when its lessons are read, its quiz is passed at ≥70%, and its **graded coding challenge** produces the right output.
 - **Gamification built in.** XP for every action, five levels from *Newcomer* to *Pythonista*, daily learning **streaks**, and a downloadable **certificate of completion** with a verification code — see [Gamification](#-gamification).
 - **Faculty-authored tests with peer approval.** Faculty build MCQ tests in a visual editor; a review panel of up to **5 faculty** decides — majority approval publishes the test to students. One attempt per student, auto-graded, with a full answer review.
-- **Marks for faculty.** Every test's results roll into the faculty dashboard — per-student marks, attempt counts, and class averages.
+- **Marks for faculty.** Every test's results roll into the faculty dashboard — per-student marks, attempt counts, and class averages, with a one-click **CSV export** for any test.
 - **Faculty materials.** Faculty add notes, links, or **uploaded PDFs** (up to 2.5 MB) to any chapter; they appear inside the chapter for every student. Admin has oversight of both tests and materials.
 - **Personal AI tutor.** A lesson-aware chat tutor on every lesson page, powered by **each user's own free Gemini API key** — the key lives only in their browser and calls Google directly; BridgeUp never sees it.
 - **Federated Adaptive Learning** *(research / patent PoC).* A privacy-preserving adaptive engine: struggle signals are captured **on-device**, and only anonymised, differentially-private difficulty estimates are aggregated (FedAvg-style) into a shared model — so personalisation improves across all learners while **no raw student data ever leaves the browser**. Powers the "recommended next module" card, a "commonly challenging" signal, and the tutor's memory. See [docs/PATENT-DISCLOSURE.md](docs/PATENT-DISCLOSURE.md).
@@ -54,13 +54,14 @@ It's a single-page app in plain HTML, CSS, and JavaScript — **no framework, no
   - **Admin** — a full console: every account, live progress, role management, test/material oversight, database export, resets.
 - **Offline study guides.** Every chapter exports a formatted **PDF** (objectives, takeaways, practice, full lesson content) via [jsPDF](https://github.com/parallax/jsPDF).
 - **Installable app (PWA).** Add BridgeUp to any phone or desktop home screen — it launches full-screen like a native app, and a service worker caches the shell (and the Python runtime after first use) so it opens and runs **offline**. No app store, no install fees.
-- **Polished UX.** **Light and dark themes** with a one-click toggle (persisted per browser; code surfaces stay dark in both), cross-fade view transitions, keyboard-accessible focus states, custom scrollbars, and zero horizontal overflow down to phone widths.
+- **Accessible by design.** A skip-to-content link, `aria-current` navigation, `aria-live` announcements for code output and check results, labelled icon controls, `prefers-reduced-motion` support, and WCAG-AA contrast — usable by keyboard and screen reader.
+- **Polished UX.** **Light and dark themes** with a one-click toggle (persisted per browser; code surfaces stay dark in both), cross-fade view transitions, custom scrollbars, and zero horizontal overflow down to phone widths.
 
 ---
 
 ## 🔑 Demo accounts
 
-A demo cohort is seeded in code on first load, so every dashboard is populated the moment you open the site. The login screen also shows the right credentials for whichever role you select.
+BridgeUp runs in one of two modes ([details](#-how-it-works)). The **hosted site runs in campus mode** — real accounts, shared across devices. To explore instantly with a **populated demo cohort and no signup**, open **[`…/bridgeup/?demo=1`](https://gitswagata1.github.io/bridgeup/?demo=1)** — `?demo=1` seeds the accounts below into your browser (persisted; `?live=1` exits). The same accounts apply to any **local clone** (which defaults to demo mode).
 
 | Role        | Email                          | Password     |
 | ----------- | ------------------------------ | ------------ |
@@ -71,7 +72,7 @@ A demo cohort is seeded in code on first load, so every dashboard is populated t
 
 More demo students, with varied progress for realistic dashboards (all `python123`): `aisha@`, `ben@`, `cara@` — `vitstudent.ac.in`.
 
-Registration is domain-gated: students sign up with `@vitstudent.ac.in`, faculty with `@vit.ac.in`.
+In **campus mode**, there is no demo cohort — everyone signs up for real, and roles are assigned server-side by email domain: `@vitstudent.ac.in` → student, `@vit.ac.in` → faculty.
 
 ---
 
@@ -137,19 +138,13 @@ Everything is derived from real progress — XP is computed, never stored, so it
 
 **Routing.** A tiny hash-free router in `app.js` swaps the contents of `#app` per view (`home`, `exam`, `result`, `course`, `chapter`, `section`, `faculty`, `admin`, plus the auth screen). Navigation cross-fades via the [View Transitions API](https://developer.mozilla.org/docs/Web/API/View_Transition_API) where available; in-place updates repaint instantly and preserve scroll.
 
-**The "database".** There is no backend. `localStorage` holds:
-
-| Key                         | Purpose                                                        |
-| --------------------------- | -------------------------------------------------------------- |
-| `bridgeup_accounts`         | All accounts (name, role, salted SHA-256 password hash)        |
-| `bridgeup_session`          | The currently signed-in email                                  |
-| `bridgeup:progress:<email>` | Per-account progress: score, lessons, quizzes, challenges, and daily activity for streaks |
-
-Passwords are hashed with the Web Crypto API before storage — never kept in plaintext.
+**Two modes, one codebase.** With `js/config.js` empty, BridgeUp runs as a **local demo** — accounts, progress, tests and materials live in the browser's `localStorage` (`bridgeup_accounts` with salted SHA-256 hashes, `bridgeup_session`, `bridgeup:progress:<email>`, `bridgeup_tests`, `bridgeup_materials`), and a demo cohort is seeded in code. Fill in a Supabase URL + anon key and the same app switches to **campus mode**: real auth, server-assigned roles, and cross-device sync, all enforced by Postgres row-level security (see [`supabase/schema.sql`](supabase/schema.sql)). A `?demo=1` URL forces the local demo even on a campus deployment (`?live=1` exits).
 
 **In-browser Python.** `runner.js` lazy-loads Pyodide on first run, then reuses it. Each run executes in a fresh namespace, captures `stdout`/`stderr`, feeds student-supplied input, echoes a trailing bare expression like the REPL, and a step-count watchdog aborts runaway loops.
 
 **Placement & progress.** The test maps a score to a level in `data.js`; the course lives in `handbook.js`. Chapter completion (lessons + quiz + challenge) rolls up automatically into the student's own view, the faculty dashboard, and the admin console.
+
+**Federated adaptive learning.** `adaptive.js` records struggle signals on the device, derives a compact per-module difficulty estimate, perturbs it with differential-privacy noise, and contributes only that estimate to a shared model via weighted averaging — never raw events or identity. In campus mode the merge runs server-side (`contribute_adaptive()` RPC). See [`docs/PATENT-DISCLOSURE.md`](docs/PATENT-DISCLOSURE.md).
 
 ---
 
@@ -157,42 +152,38 @@ Passwords are hashed with the Web Crypto API before storage — never kept in pl
 
 ```
 bridgeup/
-├── index.html          # App shell: nav, mount point, asset includes
-├── css/
-│   └── styles.css      # Design system, views, responsive rules, motion
+├── index.html                 # App shell: nav, mount point, asset includes
+├── css/styles.css             # Design system, views, responsive rules, themes, motion
 ├── js/
-│   ├── config.js       # Deployment config: empty = local demo, filled = campus mode
-│   ├── cloud.js        # Supabase adapter: auth, sync, tests, marks (campus mode)
-│   ├── auth.js         # Accounts & roles — local demo store, or delegates to cloud
-│   ├── data.js         # Proficiency test, three levels, scoring
-│   ├── handbook.js     # Course content: 8 chapters / 99 lessons (official Python Tutorial)
-│   ├── runner.js       # In-browser Python via Pyodide (stdin, loop guard, REPL echo)
-│   ├── pdf.js          # Chapter study guides + completion certificate (jsPDF)
-│   ├── adaptive.js     # Federated Adaptive Learning engine (on-device signals, FedAvg, DP, memory)
-│   └── app.js          # Views, routing, progress, quizzes, challenges, gamification, dashboards, demo seed
-├── docs/
-│   └── banner.svg
-├── supabase/
-│   └── schema.sql      # Campus-mode database: tables, RLS, approval RPCs
-├── SETUP-CLOUD.md      # 5-minute campus deployment guide
-├── tests/                      # node:test suite (content, adaptive math, schema)
-├── .github/workflows/ci.yml    # CI: syntax check + tests on every push
+│   ├── config.js              # Deployment config: empty = local demo, filled = campus mode
+│   ├── cloud.js               # Supabase adapter: auth, sync, tests, marks (campus mode)
+│   ├── auth.js                # Accounts & roles — local store, or delegates to cloud
+│   ├── data.js                # Proficiency test, three levels, scoring
+│   ├── handbook.js            # Course content: 8 chapters / 99 lessons (official Python Tutorial)
+│   ├── runner.js              # In-browser Python via Pyodide (stdin, loop guard, REPL echo)
+│   ├── pdf.js                 # Chapter study guides + completion certificate (jsPDF)
+│   ├── adaptive.js            # Federated Adaptive Learning engine (on-device, FedAvg, DP, memory)
+│   └── app.js                 # Views, routing, progress, quizzes, challenges, gamification, seed
 ├── manifest.webmanifest       # PWA manifest (installable app)
-├── sw.js                       # Service worker (offline shell + runtime caching)
-├── icons/                      # App icons (192, 512, apple-touch)
-├── docs/PATENT-DISCLOSURE.md  # Technical disclosure: Federated Adaptive Learning
-├── package.json
-├── LICENSE
-└── README.md
+├── sw.js                      # Service worker (offline shell + runtime caching)
+├── icons/                     # App icons (192, 512, apple-touch)
+├── supabase/schema.sql        # Campus-mode database: tables, RLS, roles, approval + adaptive RPCs
+├── tests/                     # node:test suite (content integrity, adaptive math, schema)
+├── .github/workflows/ci.yml   # CI: syntax check + tests on every push
+├── docs/
+│   ├── banner.svg
+│   └── PATENT-DISCLOSURE.md   # Technical disclosure: Federated Adaptive Learning
+├── SETUP-CLOUD.md             # 5-minute campus deployment guide
+├── package.json · LICENSE · README.md
 ```
 
 ---
 
 ## 🌐 Deployment
 
-No build step — deployment is "host the files".
+No build step — deployment is "host the files". This repo is live on **GitHub Pages** at [gitswagata1.github.io/bridgeup](https://gitswagata1.github.io/bridgeup/) (running in campus mode; append [`?demo=1`](https://gitswagata1.github.io/bridgeup/?demo=1) for the instant demo).
 
-- **GitHub Pages** (this demo) — push to `main`, then Settings → Pages → *Deploy from branch* → `main` / root.
+- **GitHub Pages** — push to `main`, then Settings → Pages → *Deploy from branch* → `main` / root.
 - **Netlify / Vercel** — import the repo with **no build command**, publish directory = project root.
 - **University intranet** — copy the folder to any static web server.
 

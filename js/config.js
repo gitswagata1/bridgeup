@@ -15,6 +15,6 @@
 
 window.BRIDGEUP_CONFIG = {
   supabaseUrl: "https://oarejgsgvoynanuriyjt.supabase.co",
-  supabaseAnonKey: "",    // PASTE the "anon public" key here (Project Settings → API Keys, starts with eyJ… or sb_publishable_…)
+  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hcmVqZ3Nndm95bmFudXJpeWp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMzQ3NTIsImV4cCI6MjA5OTYxMDc1Mn0.mJz58GBWRJxCzOOM_v5N_OtJPop3JrjXIk48PRkPqKg",    // PASTE the "anon public" key here (Project Settings → API Keys, starts with eyJ… or sb_publishable_…)
   adminEmail: "theswagata1@gmail.com"   // this account signs in as admin
 };

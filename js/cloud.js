@@ -31,7 +31,21 @@ const Cloud = {
 
   config() { return window.BRIDGEUP_CONFIG || {}; },
 
+  /* A backend is "configured" only when a URL + anon key are present AND demo
+     mode isn't forced. `?demo=1` (persisted) forces the local demo cohort even
+     on a campus deployment — one URL for the real pilot, `?demo=1` for instant
+     click-around demos. `?demo=0` (or `?live=1`) returns to the real backend. */
+  demoForced() {
+    try {
+      const q = new URLSearchParams(location.search);
+      if (q.get("demo") === "1") localStorage.setItem("bridgeup:demo", "1");
+      if (q.get("demo") === "0" || q.get("live") === "1") localStorage.removeItem("bridgeup:demo");
+      return localStorage.getItem("bridgeup:demo") === "1";
+    } catch { return false; }
+  },
+
   configured() {
+    if (this.demoForced()) return false;
     const c = this.config();
     return !!(c.supabaseUrl && c.supabaseAnonKey) || localStorage.getItem("bridgeup:mockcloud") === "1";
   },

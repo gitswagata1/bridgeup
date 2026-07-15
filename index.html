@@ -20,6 +20,8 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
 </head>
 <body class="pre-auth">
+  <a class="skip-link" href="#app">Skip to content</a>
+  <span class="demo-chip" id="demoChip" hidden></span>
   <!-- ============ NAV ============ -->
   <header class="nav">
     <a class="brand" href="#" data-nav="home">
@@ -44,7 +46,7 @@
     </div>
   </header>
 
-  <main id="app"><!-- views injected here --></main>
+  <main id="app" tabindex="-1"><!-- views injected here --></main>
 
   <footer class="footer">
     <p>BridgeUp · Built for first-year students taking their first steps in Python.</p>

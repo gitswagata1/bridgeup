@@ -52,6 +52,7 @@ It's a single-page app in plain HTML, CSS, and JavaScript — **no framework, no
   - **Faculty** — class analytics and marks, plus authoring: tests (peer-reviewed) and chapter materials.
   - **Admin** — a full console: every account, live progress, role management, test/material oversight, database export, resets.
 - **Offline study guides.** Every chapter exports a formatted **PDF** (objectives, takeaways, practice, full lesson content) via [jsPDF](https://github.com/parallax/jsPDF).
+- **Installable app (PWA).** Add BridgeUp to any phone or desktop home screen — it launches full-screen like a native app, and a service worker caches the shell (and the Python runtime after first use) so it opens and runs **offline**. No app store, no install fees.
 - **Polished UX.** **Light and dark themes** with a one-click toggle (persisted per browser; code surfaces stay dark in both), cross-fade view transitions, keyboard-accessible focus states, custom scrollbars, and zero horizontal overflow down to phone widths.
 
 ---
@@ -173,6 +174,9 @@ bridgeup/
 ├── supabase/
 │   └── schema.sql      # Campus-mode database: tables, RLS, approval RPCs
 ├── SETUP-CLOUD.md      # 5-minute campus deployment guide
+├── manifest.webmanifest       # PWA manifest (installable app)
+├── sw.js                       # Service worker (offline shell + runtime caching)
+├── icons/                      # App icons (192, 512, apple-touch)
 ├── docs/PATENT-DISCLOSURE.md  # Technical disclosure: Federated Adaptive Learning
 ├── package.json
 ├── LICENSE

@@ -25,7 +25,7 @@ const Cloud = {
   client: null,
   me: null,                    // { id, email, name, role }
   progressData: {},            // my progress blob (live reference for store)
-  cache: { profiles: [], tests: [], materials: [], results: [], progressByEmail: {} },
+  cache: { profiles: [], tests: [], materials: [], results: [], progressByEmail: {}, globalModel: {} },
   _saveTimer: null,
   _lastRefresh: 0,
 
@@ -81,7 +81,7 @@ const Cloud = {
     const meWas = this.me, dataWas = this.progressData;
     this.me = null;
     this.progressData = {};
-    this.cache = { profiles: [], tests: [], materials: [], results: [], progressByEmail: {} };
+    this.cache = { profiles: [], tests: [], materials: [], results: [], progressByEmail: {}, globalModel: {} };
     this._logoutP = (async () => {
       if (meWas) {
         await this.client.from("progress")
@@ -143,6 +143,9 @@ const Cloud = {
       this.cache.progressByEmail = Object.fromEntries((allProg || []).map(row => [emailOf(row.user_id), row.data || {}]));
     }
     this.cache.progressByEmail[this.me.email] = this.progressData;
+
+    const gm = await this.client.from("global_model").select("*");
+    this.cache.globalModel = Object.fromEntries((gm.data || []).map(r => [r.module_id, { diff: r.difficulty, n: r.samples }]));
   },
 
   /* ---------- accounts (app-shape) ---------- */
@@ -190,6 +193,19 @@ const Cloud = {
     await this.refreshAll(true);
     return { ok: true };
   },
+  /* federated adaptive: contribute derived per-module estimates (no raw data). */
+  async contributeAdaptive(update) {
+    if (!this.me || !update || !Object.keys(update).length) return;
+    const { error } = await this.client.rpc("contribute_adaptive", { p_update: update });
+    if (error) { console.warn("BridgeUp: adaptive contribution failed —", error.message); return; }
+    // reflect locally so the UI updates without a full refresh
+    for (const [k, u] of Object.entries(update)) {
+      const g = this.cache.globalModel[k] || { diff: 0.3, n: 0 };
+      g.diff = (g.diff * g.n + u.est * u.w) / (g.n + u.w); g.n += u.w;
+      this.cache.globalModel[k] = g;
+    }
+  },
+
   async vote(id, approve, reason) {
     const { error } = await this.client.rpc("vote_test", { p_test: id, p_approve: approve, p_reason: reason || "" });
     if (error) return { error: error.message };
@@ -264,7 +280,8 @@ const Cloud = {
 function _mockSupabase() {
   const DB_KEY = "bridgeup_cloud_mock_db";
   const load = () => { try { return JSON.parse(localStorage.getItem(DB_KEY)) || null; } catch { return null; } };
-  const db = load() || { users: [], profiles: [], progress: [], tests: [], materials: [], test_results: [], session: null, seq: 1 };
+  const db = load() || { users: [], profiles: [], progress: [], tests: [], materials: [], test_results: [], global_model: [], session: null, seq: 1 };
+  if (!db.global_model) db.global_model = [];
   const save = () => localStorage.setItem(DB_KEY, JSON.stringify(db));
   const uuid = () => "m-" + (db.seq++) + "-" + Math.random().toString(36).slice(2, 8);
   const now = () => new Date().toISOString();
@@ -393,6 +410,18 @@ function _mockSupabase() {
         db.materials = db.materials.filter(x => x.author !== args.p_user);
         save();
       }
+      return { data: null, error: null };
+    }
+    if (fn === "contribute_adaptive") {
+      const u = args.p_update || {};
+      for (const k of Object.keys(u)) {
+        const est = Math.max(0, Math.min(1, +u[k].est)); const w = Math.max(0, Math.min(5, +u[k].w));
+        if (w <= 0) continue;
+        let g = db.global_model.find(r => r.module_id === k);
+        if (!g) { g = { module_id: k, difficulty: est, samples: w }; db.global_model.push(g); }
+        else { g.difficulty = (g.difficulty * g.samples + est * w) / (g.samples + w); g.samples += w; }
+      }
+      save();
       return { data: null, error: null };
     }
     return err("Unknown RPC " + fn);

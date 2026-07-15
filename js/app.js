@@ -1048,12 +1048,14 @@ async function checkChallenge(ch, id, btn) {
     const d = { ...(store.get().challenges || {}) };
     d[ch] = true;
     store.set({ challenges: d });
+    if (typeof Adaptive !== "undefined") Adaptive.observe(ch, { solved: true });
     // reflect it on the checklist without wiping the editor / success message
     const el = document.getElementById("checklist-card");
     if (el) el.outerHTML = checklistCardHTML(ch);
   } else if (res.error) {
     statusEl.className = "check-status check-fail";
     statusEl.innerHTML = `${icon("alert")} Your code hit an error — read the message in the output above, then try again.`;
+    if (typeof Adaptive !== "undefined") Adaptive.observe(ch, { errors: 1, attempts: 1 });
   } else {
     statusEl.className = "check-status check-fail";
     statusEl.innerHTML = `Not quite yet. <div class="cmp"><div><span>Expected</span><pre class="sol-code">${esc(chal.expected)}</pre></div><div><span>Your output</span><pre class="sol-code">${esc(res.output.replace(/\n$/, "")) || "(no output)"}</pre></div></div>Try the hint if you're stuck.`;
@@ -1261,6 +1263,28 @@ function viewCourse() {
       </div>`;
       })()}
 
+      ${(() => {
+        if (typeof Adaptive === "undefined") return "";
+        const rec = Adaptive.recommend(p);
+        if (!rec) return `
+      <div class="adapt-card done">
+        <div class="adapt-ic">${icon("target")}</div>
+        <div class="adapt-body"><span class="eyebrow">Adaptive path</span><h3>Every module complete — outstanding.</h3><p class="muted">Your personalised path has nothing left to recommend. Revisit anything you'd like to sharpen.</p></div>
+      </div>`;
+        const flag = rec.label ? `<span class="adapt-chip ${rec.hard ? "ac-hard" : ""}">${icon("bolt")} ${rec.label} for most learners</span>` : "";
+        return `
+      <div class="adapt-card" style="--accent:${(CH_META[rec.ch] || {}).color || "#3b82f6"}">
+        <div class="adapt-ic">${icon("target")}</div>
+        <div class="adapt-body">
+          <span class="eyebrow">Adaptive path · recommended next</span>
+          <h3>Chapter ${rec.ch} — ${esc(rec.title)}</h3>
+          <p class="muted">Chosen from your own progress${rec.difficulty != null ? " and the federated signal from ~" + Math.round(Adaptive.globalModel()[rec.ch].n) + " learners (no individual data shared)" : ""}. Your mastery of this module: <b>${rec.mastery}%</b>.</p>
+          <div class="adapt-tags">${flag}${rec.hard ? `<span class="adapt-tip">${icon("bulb")} Tip: take it slowly and lean on the AI tutor.</span>` : ""}</div>
+          <button class="btn chap-cta" data-chapter="${rec.ch}">Open Chapter ${rec.ch} →</button>
+        </div>
+      </div>`;
+      })()}
+
       <div class="chapters-grid">
         ${HANDBOOK.map(c => {
           const meta = CH_META[c.ch] || { color: "#3b82f6", icon: "layers", level: "Core", outcome: "" };
@@ -1274,7 +1298,7 @@ function viewCourse() {
                 <div class="chap-ring">${ring(cPct, 52, 5)}<span class="chap-ring-n">${c.ch}</span></div>
                 <div class="chap-info">
                   <div class="chap-title">${esc(c.title)} <span class="chap-open-hint">Open chapter →</span></div>
-                  <div class="chap-sub"><span class="chap-level">${meta.level}</span><span class="muted">${c.sections.length} lessons</span><span class="muted">${cDone}/${c.sections.length} done</span>${chapterComplete(c.ch) ? `<span class="chap-master done">${icon("checkCircle")} Complete</span>` : quizPassed(c.ch) ? `<span class="chap-master">${icon("check")} Quiz passed</span>` : ""}</div>
+                  <div class="chap-sub"><span class="chap-level">${meta.level}</span><span class="muted">${c.sections.length} lessons</span><span class="muted">${cDone}/${c.sections.length} done</span>${chapterComplete(c.ch) ? `<span class="chap-master done">${icon("checkCircle")} Complete</span>` : quizPassed(c.ch) ? `<span class="chap-master">${icon("check")} Quiz passed</span>` : ""}${(typeof Adaptive !== "undefined" && Adaptive.isHard(c.ch)) ? `<span class="fed-chip" title="From privacy-preserving federated data — no individual student is identified">${icon("bolt")} ${Adaptive.difficultyLabel(c.ch)}</span>` : ""}</div>
                   <p class="chap-outcome muted">${esc(meta.outcome)}</p>
                 </div>
               </button>
@@ -1403,6 +1427,7 @@ function answerQuiz(ch, qi, oi) {
   qEl.querySelector(".quiz-why").classList.remove("out-hidden");
   const scoreEl = document.querySelector(".quiz-score");
   if (scoreEl) scoreEl.innerHTML = renderQuizScoreInner(ch);
+  if (typeof Adaptive !== "undefined") Adaptive.observe(ch, oi === q.answer ? {} : { errors: 1 });
 }
 
 function viewChapter(ch) {
@@ -1640,11 +1665,12 @@ function tutorContext() {
   if (!s) return "You are BridgeUp's friendly Python tutor for first-year students.";
   const text = s.blocks.map(b => (b.t === "code" ? "```python\n" + b.x + "\n```" : b.x)).join("\n").slice(0, 1600);
   const code = (document.getElementById("code-hb-sandbox") || {}).value || "";
+  const mem = (typeof Adaptive !== "undefined") ? Adaptive.memorySummary() : "";
   return `You are BridgeUp's friendly Python tutor for first-year students at VIT.
 Be concise (under 150 words), encouraging, and never invent facts.
 Prefer guiding hints over full answers for graded work.
 The student is on the lesson "${s.title}" (Chapter ${s.chapter.ch}: ${s.chapter.title}).
-Lesson excerpt:\n${text}\n${code ? "Student's current Scratchpad code:\n```python\n" + code + "\n```" : ""}`;
+${mem ? mem + "\n" : ""}Lesson excerpt:\n${text}\n${code ? "Student's current Scratchpad code:\n```python\n" + code + "\n```" : ""}`;
 }
 
 function paintTutor() {
@@ -2412,7 +2438,12 @@ document.addEventListener("click", (e) => {
 
   // reveal hint / solution
   const hintBtn = e.target.closest("[data-hint]");
-  if (hintBtn) { document.getElementById("hint-" + hintBtn.dataset.hint)?.classList.remove("out-hidden"); return; }
+  if (hintBtn) {
+    document.getElementById("hint-" + hintBtn.dataset.hint)?.classList.remove("out-hidden");
+    const m = String(hintBtn.dataset.hint).match(/^chal-(\d+)$/);
+    if (m && typeof Adaptive !== "undefined") Adaptive.observe(Number(m[1]), { hints: 1 });
+    return;
+  }
   const solBtn = e.target.closest("[data-solution]");
   if (solBtn) { document.getElementById("solution-" + solBtn.dataset.solution)?.classList.remove("out-hidden"); return; }
 
@@ -2517,6 +2548,7 @@ async function seedDemo() {
   }
   localStorage.setItem(Auth.accountsKey, JSON.stringify(accounts));
   localStorage.setItem("bridgeup_demo_seeded", SEED_V);
+  if (typeof Adaptive !== "undefined") Adaptive.seedGlobalModel();
 }
 
 /* ---------- Theme: dark (default) ⇄ light, persisted per browser ---------- */

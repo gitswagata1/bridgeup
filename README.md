@@ -7,6 +7,7 @@
   <img src="https://img.shields.io/badge/JavaScript-vanilla-f7df1e?logo=javascript&logoColor=black" alt="Vanilla JS">
   <img src="https://img.shields.io/badge/Python-Pyodide-3776ab?logo=python&logoColor=white" alt="Python via Pyodide">
   <img src="https://img.shields.io/badge/dependencies-0-brightgreen" alt="Zero dependencies">
+  <a href="https://github.com/gitswagata1/bridgeup/actions/workflows/ci.yml"><img src="https://github.com/gitswagata1/bridgeup/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://gitswagata1.github.io/bridgeup/"><img src="https://img.shields.io/badge/demo-live-14b8a6" alt="Live demo"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue" alt="MIT License"></a>
 </p>
@@ -174,6 +175,8 @@ bridgeup/
 ├── supabase/
 │   └── schema.sql      # Campus-mode database: tables, RLS, approval RPCs
 ├── SETUP-CLOUD.md      # 5-minute campus deployment guide
+├── tests/                      # node:test suite (content, adaptive math, schema)
+├── .github/workflows/ci.yml    # CI: syntax check + tests on every push
 ├── manifest.webmanifest       # PWA manifest (installable app)
 ├── sw.js                       # Service worker (offline shell + runtime caching)
 ├── icons/                      # App icons (192, 512, apple-touch)

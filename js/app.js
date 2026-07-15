@@ -676,6 +676,7 @@ function viewAuth() {
             <li><span class="sc-check">${icon("check")}</span> Real Python running in your browser — zero setup</li>
             <li><span class="sc-check">${icon("check")}</span> Instant feedback on every exercise you write</li>
           </ul>
+          ${Cloud.enabled ? `<p class="showcase-welcome">New to BridgeUp? Create your account with your <b>VIT email</b> to begin — your progress follows you on every device.</p>` : ""}
         </div>
       </aside>
       <div class="auth-panel">
@@ -966,7 +967,7 @@ function renderEditor(id, code, stdin, checkable) {
         <button class="btn btn-run" data-run="${id}">▶ Run</button>
         ${checkable ? `<button class="btn btn-ghost" data-check="${id}">Check answer</button>` : ""}
       </div>
-      <div id="out-${id}" class="out out-hidden"></div>
+      <div id="out-${id}" class="out out-hidden" role="status" aria-live="polite" aria-label="Code output"></div>
     </div>`;
 }
 
@@ -1304,7 +1305,7 @@ function viewCourse() {
               </button>
               <div class="chap-actions">
                 <button class="btn btn-ghost mod-pdf" data-pdf="${c.ch}">${icon("download")} PDF</button>
-                <button class="chap-chev" data-opench="${c.ch}" title="${open ? "Collapse" : "Expand"} lessons">${open ? "▾" : "▸"}</button>
+                <button class="chap-chev" data-opench="${c.ch}" title="${open ? "Collapse" : "Expand"} lessons" aria-label="${open ? "Collapse" : "Expand"} Chapter ${c.ch} lessons" aria-expanded="${open}">${open ? "▾" : "▸"}</button>
               </div>
             </div>
             <div class="chap-lessons ${open ? "" : "collapsed"}">
@@ -1493,7 +1494,7 @@ function viewChapter(ch) {
             <h2>${icon("rocket")} Prove your skills</h2>
             <p class="chal-prompt">${CHALLENGE[ch].prompt}</p>
             ${renderEditor("chal-" + ch, CHALLENGE[ch].starter, CHALLENGE[ch].stdin || "", true)}
-            <div id="check-status-chal-${ch}" class="check-status out-hidden"></div>
+            <div id="check-status-chal-${ch}" class="check-status out-hidden" role="status" aria-live="polite"></div>
             <div class="task-help">
               <button class="link-inline" data-hint="chal-${ch}">Show hint</button>
               <span class="dot-sep">·</span>
@@ -1933,7 +1934,7 @@ function facultyTestPanels(u) {
           const avg = rowsM.length ? Math.round(rowsM.reduce((s, r) => s + r.score / r.total, 0) / rowsM.length * 100) : 0;
           return `
           <div class="marks-group">
-            <div class="marks-head"><b>${esc(t.title)}</b><span class="muted">${rowsM.length}/${totalStu} attempted${rowsM.length ? ` · class average ${avg}%` : ""}</span></div>
+            <div class="marks-head"><b>${esc(t.title)}</b><span class="muted">${rowsM.length}/${totalStu} attempted${rowsM.length ? ` · class average ${avg}%` : ""}</span>${rowsM.length ? `<button class="mini-btn marks-csv" data-marks-csv="${t.id}">${icon("download")} CSV</button>` : ""}</div>
             ${rowsM.length ? `
             <div class="table-scroll"><table class="admin-table marks-table">
               <thead><tr><th>Student</th><th>Email</th><th class="ctr">Marks</th><th class="ctr">%</th></tr></thead>
@@ -2018,8 +2019,11 @@ function render(route) {
   const sameRoute = route === currentRoute;
   const paint = () => {
     app.innerHTML = fn();
-    document.querySelectorAll(".nav-links a").forEach(a =>
-      a.classList.toggle("active", a.dataset.nav === route));
+    document.querySelectorAll(".nav-links a").forEach(a => {
+      const on = a.dataset.nav === route;
+      a.classList.toggle("active", on);
+      if (on) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+    });
     if (route === "home") requestAnimationFrame(animateCounters);
     if (route === "section") requestAnimationFrame(paintTutor);
   };
@@ -2394,6 +2398,25 @@ document.addEventListener("click", (e) => {
     return;
   }
 
+  /* ---------- faculty: export a test's marks as CSV ---------- */
+  const csvBtn = e.target.closest("[data-marks-csv]");
+  if (csvBtn) {
+    const t = allTests().find(x => x.id === csvBtn.dataset.marksCsv);
+    if (!t) return;
+    const rows = testMarks(t.id);
+    const q = v => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
+    const lines = [["Name", "Email", "Score", "Total", "Percentage"].join(",")];
+    rows.forEach(r => lines.push([q(r.name), q(r.email), r.score, r.total, Math.round(r.score / r.total * 100) + "%"].join(",")));
+    const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "BridgeUp-marks-" + t.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + ".csv";
+    a.click();
+    URL.revokeObjectURL(url);
+    return;
+  }
+
   /* ---------- campus mode: manual data refresh ---------- */
   if (e.target.closest("[data-cloud-refresh]")) {
     const btn = e.target.closest("[data-cloud-refresh]");
@@ -2567,6 +2590,22 @@ document.getElementById("themeToggle")?.addEventListener("click", () => {
 });
 paintThemeToggle();
 
+/* Show a "Demo mode" chip only when a real backend is configured but we're
+   deliberately running the demo cohort (via ?demo=1) — so it's clear this is
+   sample data, with one click back to the live site. */
+function paintDemoChip() {
+  const chip = document.getElementById("demoChip");
+  if (!chip) return;
+  const c = Cloud.config();
+  const overridingBackend = Cloud.demoForced() && !!(c.supabaseUrl && c.supabaseAnonKey);
+  if (overridingBackend) {
+    chip.hidden = false;
+    chip.innerHTML = `● Demo mode <a href="?live=1" title="Switch to the live site">exit →</a>`;
+  } else {
+    chip.hidden = true;
+  }
+}
+
 /* ---------- Boot: campus mode if configured, else local demo ---------- */
 (async () => {
   if (Cloud.configured()) {
@@ -2574,6 +2613,7 @@ paintThemeToggle();
     catch (e) { console.warn("BridgeUp: cloud unavailable, using local mode —", e); }
   }
   if (!Cloud.enabled) { await Auth.init(); await seedDemo(); }
+  paintDemoChip();
   if (Auth.currentUser()) enterApp();
   else renderAuth();
 })();

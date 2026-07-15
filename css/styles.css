@@ -7,8 +7,8 @@
   --panel: #131d33;
   --panel-2: #172038;
   --ink: #e8edf7;
-  --ink-soft: #9fb0cc;
-  --muted: #6b7c9c;
+  --ink-soft: #a8b8d2;
+  --muted: #8394b1;
   --line: #24304d;
   --blue: #3b82f6;
   --teal: #14b8a6;
@@ -1401,3 +1401,46 @@ html.light .sec-done-badge { color: #0b6e62; }
 html.light .fed-chip { color: #6d28d9; background: rgba(109,63,212,.09); border-color: rgba(109,63,212,.3); }
 html.light .adapt-chip { color: #0b6e62; }
 html.light .adapt-chip.ac-hard { color: #a16207; }
+
+/* ============================================================
+   ACCESSIBILITY + DEMO-MODE + CSV
+   ============================================================ */
+/* skip-to-content link — hidden until keyboard-focused */
+.skip-link {
+  position: fixed; top: -60px; left: 12px; z-index: 200;
+  background: var(--blue); color: #fff; padding: 10px 16px; border-radius: 0 0 10px 10px;
+  font-weight: 700; text-decoration: none; transition: top .15s;
+}
+.skip-link:focus { top: 0; }
+#app:focus { outline: none; }
+
+/* demo-mode chip (only shown when ?demo overrides a real backend) */
+.demo-chip {
+  position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 120;
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 700; color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 14%, var(--panel)); border: 1px solid rgba(245,158,11,.45);
+  padding: 5px 13px; border-radius: 999px; box-shadow: var(--shadow);
+}
+.demo-chip a { color: var(--ink-soft); text-decoration: underline; text-underline-offset: 2px; }
+.demo-chip a:hover { color: var(--ink); }
+@media (max-width: 620px) { .demo-chip { top: auto; bottom: 12px; } }
+
+/* campus onboarding line on the auth showcase */
+.showcase-welcome { margin-top: 22px; font-size: 14px; line-height: 1.6; color: var(--ink-soft); border-left: 3px solid var(--teal); padding-left: 14px; }
+
+/* CSV button in the marks header */
+.marks-head { flex-wrap: wrap; }
+.marks-csv { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; }
+.marks-csv svg { width: 13px; height: 13px; }
+
+/* respect reduced-motion: still functional, just calm */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+  body::before { animation: none !important; }
+}

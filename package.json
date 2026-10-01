@@ -10,6 +10,11 @@
     "vanilla-js"
   ],
   "license": "MIT",
+  "author": "Swagata Banerjee <theswagata1@gmail.com> (https://github.com/gitswagata1)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gitswagata1/bridgeup.git"
+  },
   "scripts": {
     "start": "python3 -m http.server 8750"
   },

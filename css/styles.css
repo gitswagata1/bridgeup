@@ -1444,3 +1444,19 @@ html.light .adapt-chip.ac-hard { color: #a16207; }
   }
   body::before { animation: none !important; }
 }
+
+@media (max-width: 480px) {
+  img, svg, video, canvas, table { max-width: 100%; }
+  .cw-body, .qcode, .table-scroll, .raw-db { max-width: 100%; }
+  body { overflow-x: hidden; }
+  .btn, .btn-lg, .mini-btn, .nav-logout, .role-select,
+  .role-opt, .auth-tab, .hb-try, .hb-send,
+  .hb-code-bar .hb-run, .hb-code-bar .hb-edit,
+  .chap-chev, .tutor-gear, .link-inline, .link-back { min-height: 44px; }
+  .mini-btn, .nav-logout, .hb-try, .hb-send,
+  .hb-code-bar .hb-run, .hb-code-bar .hb-edit { display: inline-flex; align-items: center; justify-content: center; }
+  .tutor-gear, .ck-box { min-width: 44px; min-height: 44px; }
+  .why, .stat-grid { grid-template-columns: 1fr; }
+  .stat-chips { flex-wrap: wrap; }
+  .chip { flex: 1 1 40%; }
+}
